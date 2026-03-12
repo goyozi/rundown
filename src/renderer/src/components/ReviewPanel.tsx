@@ -272,7 +272,7 @@ export function ReviewPanel({
   const branchModeDisabled = !branchInfo?.mainBranch || isOnMainBranch
 
   return (
-    <div className="flex flex-col h-full" data-testid="review-panel">
+    <div className="flex flex-col flex-1 min-h-0" data-testid="review-panel">
       {/* Toolbar */}
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/50 bg-muted/20">
         {/* Mode toggle */}
@@ -504,7 +504,7 @@ export function ReviewPanel({
       {/* Submit footer */}
       {commentCount > 0 && (
         <div
-          className="border-t border-border/50 bg-muted/20 px-4 py-3 flex items-center gap-3"
+          className="shrink-0 border-t border-border/50 bg-muted/20 px-4 py-3 flex items-center gap-3"
           data-testid="submit-footer"
         >
           <div className="flex-1 text-xs text-muted-foreground">

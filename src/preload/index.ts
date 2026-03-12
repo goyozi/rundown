@@ -11,6 +11,9 @@ const api = {
   diffBranch: (dirPath: string, mainBranch: string) =>
     ipcRenderer.invoke('git:diff-branch', dirPath, mainBranch),
 
+  // Theme
+  setNativeTheme: (theme: 'light' | 'dark' | 'system') => ipcRenderer.invoke('theme:set', theme),
+
   // PTY
   ptySpawn: (taskId: string, cwd: string) => ipcRenderer.invoke('pty:spawn', taskId, cwd),
   ptyWrite: (taskId: string, data: string) => ipcRenderer.invoke('pty:write', taskId, data),

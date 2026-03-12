@@ -12,6 +12,9 @@ interface RundownAPI {
   diffUncommitted(dirPath: string): Promise<{ diff: string; error?: string }>
   diffBranch(dirPath: string, mainBranch: string): Promise<{ diff: string; error?: string }>
 
+  // Theme
+  setNativeTheme(theme: 'light' | 'dark' | 'system'): Promise<void>
+
   // PTY
   ptySpawn(taskId: string, cwd: string): Promise<{ success: boolean; error?: string }>
   ptyWrite(taskId: string, data: string): Promise<void>

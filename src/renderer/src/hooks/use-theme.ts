@@ -24,8 +24,13 @@ function apply(resolved: ResolvedTheme): void {
   document.documentElement.classList.toggle('dark', resolved === 'dark')
 }
 
+function syncNativeTheme(m: ThemeMode): void {
+  window.api?.setNativeTheme?.(m)
+}
+
 // Apply immediately on load
 apply(resolve(mode))
+syncNativeTheme(mode)
 
 // React to OS theme changes
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
@@ -59,6 +64,7 @@ export function useTheme(): {
     mode = next
     localStorage.setItem(STORAGE_KEY, next)
     apply(resolve(next))
+    syncNativeTheme(next)
     notify()
   }
 

@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, nativeTheme } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -60,6 +60,10 @@ app.whenReady().then(() => {
 
   registerStoreHandlers()
   registerPtyHandlers(() => mainWindow)
+
+  ipcMain.handle('theme:set', (_event, theme: 'light' | 'dark' | 'system') => {
+    nativeTheme.themeSource = theme
+  })
 
   createWindow()
 

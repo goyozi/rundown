@@ -57,4 +57,63 @@ export function registerStoreHandlers(): void {
       }
     }
   )
+
+  ipcMain.handle(
+    'git:detect-branch',
+    async (
+      _event,
+      dirPath: string
+    ): Promise<{ current: string; mainBranch: string | null; error?: string }> => {
+      try {
+        const git = simpleGit(dirPath)
+        const branchSummary = await git.branch()
+        const current = branchSummary.current
+
+        // Auto-detect main vs master: prefer 'main' if both exist
+        let mainBranch: string | null = null
+        const allBranches = branchSummary.all
+        if (allBranches.includes('main')) {
+          mainBranch = 'main'
+        } else if (allBranches.includes('master')) {
+          mainBranch = 'master'
+        }
+
+        return { current, mainBranch }
+      } catch {
+        return { current: '', mainBranch: null, error: 'Failed to detect branch' }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'git:diff-uncommitted',
+    async (_event, dirPath: string): Promise<{ diff: string; error?: string }> => {
+      try {
+        const git = simpleGit(dirPath)
+        // Show both staged and unstaged changes vs HEAD
+        const diff = await git.diff(['HEAD'])
+        return { diff }
+      } catch {
+        return { diff: '', error: 'Failed to get uncommitted diff' }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'git:diff-branch',
+    async (
+      _event,
+      dirPath: string,
+      mainBranch: string
+    ): Promise<{ diff: string; error?: string }> => {
+      try {
+        const git = simpleGit(dirPath)
+        // Show diff between main branch and current working tree (committed + uncommitted)
+        const diff = await git.diff([mainBranch])
+        return { diff }
+      } catch {
+        return { diff: '', error: 'Failed to get branch diff' }
+      }
+    }
+  )
 }

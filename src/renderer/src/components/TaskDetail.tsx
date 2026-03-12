@@ -7,7 +7,8 @@ import {
   AlertCircle,
   Play,
   Square,
-  Loader2
+  Loader2,
+  Code2
 } from 'lucide-react'
 import { useTaskStore } from '@/store/task-store'
 import { Badge } from '@/components/ui/badge'
@@ -16,7 +17,10 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { TerminalPanel } from './TerminalPanel'
+import { ReviewPanel } from './ReviewPanel'
 import { cn } from '@/lib/utils'
+
+type DetailTab = 'terminal' | 'review'
 
 export function TaskDetail() {
   const {
@@ -32,6 +36,7 @@ export function TaskDetail() {
   const [dirError, setDirError] = useState<string | null>(null)
   const [isEditingDir, setIsEditingDir] = useState(false)
   const [isStarting, setIsStarting] = useState(false)
+  const [activeTab, setActiveTab] = useState<DetailTab>('terminal')
 
   if (!selectedTaskId) {
     return (
@@ -319,8 +324,44 @@ export function TaskDetail() {
 
       <Separator />
 
-      {/* Session area */}
-      {sessionActive ? (
+      {/* Tab bar - show when session active or directory available for review */}
+      {(sessionActive || effectiveDir) && (
+        <div className="flex items-center border-b border-border/50 bg-muted/10 px-4">
+          <button
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors -mb-px',
+              activeTab === 'terminal'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+            onClick={() => setActiveTab('terminal')}
+            data-testid="tab-terminal"
+          >
+            <Terminal className="size-3.5" />
+            Terminal
+          </button>
+          {effectiveDir && (
+            <button
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors -mb-px',
+                activeTab === 'review'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => setActiveTab('review')}
+              data-testid="tab-review"
+            >
+              <Code2 className="size-3.5" />
+              Review
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Content area */}
+      {activeTab === 'review' && effectiveDir ? (
+        <ReviewPanel directory={effectiveDir} />
+      ) : sessionActive ? (
         <TerminalPanel taskId={task.id} />
       ) : (
         <div className="flex-1 flex items-center justify-center">

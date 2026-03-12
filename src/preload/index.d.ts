@@ -6,6 +6,9 @@ interface RundownAPI {
   saveTasks(tasks: Task[]): Promise<void>
   openDirectory(): Promise<string | undefined>
   validateRepo(dirPath: string): Promise<{ valid: boolean; error?: string }>
+  detectBranch(dirPath: string): Promise<{ current: string; mainBranch: string | null; error?: string }>
+  diffUncommitted(dirPath: string): Promise<{ diff: string; error?: string }>
+  diffBranch(dirPath: string, mainBranch: string): Promise<{ diff: string; error?: string }>
 
   // PTY
   ptySpawn(taskId: string, cwd: string): Promise<{ success: boolean; error?: string }>

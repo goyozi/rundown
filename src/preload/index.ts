@@ -6,6 +6,10 @@ const api = {
   saveTasks: (tasks: unknown[]) => ipcRenderer.invoke('store:save-tasks', tasks),
   openDirectory: () => ipcRenderer.invoke('dialog:open-directory'),
   validateRepo: (dirPath: string) => ipcRenderer.invoke('git:validate-repo', dirPath),
+  detectBranch: (dirPath: string) => ipcRenderer.invoke('git:detect-branch', dirPath),
+  diffUncommitted: (dirPath: string) => ipcRenderer.invoke('git:diff-uncommitted', dirPath),
+  diffBranch: (dirPath: string, mainBranch: string) =>
+    ipcRenderer.invoke('git:diff-branch', dirPath, mainBranch),
 
   // PTY
   ptySpawn: (taskId: string, cwd: string) => ipcRenderer.invoke('pty:spawn', taskId, cwd),

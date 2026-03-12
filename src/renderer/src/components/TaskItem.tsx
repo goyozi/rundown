@@ -71,6 +71,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
   const [isAddingChild, setIsAddingChild] = useState(false)
   const [childDescription, setChildDescription] = useState('')
   const [isHovered, setIsHovered] = useState(false)
+  const [directoryError, setDirectoryError] = useState<string | null>(null)
 
   const children = getChildren(task.id)
   const hasChildren = children.length > 0
@@ -106,7 +107,13 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
   const handlePickDirectory = async () => {
     const dir = await window.api.openDirectory()
     if (dir) {
-      updateDirectory(task.id, dir)
+      const result = await window.api.validateRepo(dir)
+      if (result.valid) {
+        setDirectoryError(null)
+        updateDirectory(task.id, dir)
+      } else {
+        setDirectoryError(result.error ?? 'Invalid directory')
+      }
     }
   }
 
@@ -124,12 +131,12 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div
           className={cn(
-            'group flex items-center gap-1 rounded-lg px-2 py-1.5 cursor-pointer transition-all duration-150',
+            'group flex items-start gap-1 rounded-lg px-2 py-1.5 cursor-pointer transition-all duration-150',
             isSelected
               ? 'bg-accent shadow-[0_0_0_1px_var(--color-primary)/12%] text-accent-foreground'
               : 'hover:bg-muted/60'
           )}
-          style={{ paddingLeft: `${depth * 18 + 8}px` }}
+          style={{ paddingLeft: `${depth * 16 + 4}px` }}
           onClick={() => selectTask(task.id)}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
@@ -143,7 +150,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="shrink-0 size-5 text-muted-foreground/60"
+                className="shrink-0 size-5 mt-px text-muted-foreground/60"
                 onClick={(e) => e.stopPropagation()}
               >
                 <ChevronRight
@@ -155,14 +162,14 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
               </Button>
             </CollapsibleTrigger>
           ) : (
-            <div className="w-5 shrink-0" />
+            <div className="w-3 shrink-0" />
           )}
 
           {/* Done/idle toggle */}
           <button
             onClick={handleToggleDone}
             className={cn(
-              'shrink-0 transition-all duration-200',
+              'shrink-0 mt-px transition-all duration-200',
               isDone
                 ? 'text-success hover:text-success/70'
                 : 'text-muted-foreground/40 hover:text-muted-foreground'
@@ -199,7 +206,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
           ) : (
             <span
               className={cn(
-                'flex-1 text-[13px] leading-snug truncate transition-colors duration-150',
+                'flex-1 text-[13px] leading-snug min-w-0 break-words transition-colors duration-150',
                 isDone && 'line-through text-muted-foreground/50'
               )}
             >
@@ -209,7 +216,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
 
           {/* Hover action buttons */}
           {isHovered && !isEditing && (
-            <div className="flex items-center shrink-0">
+            <div className="flex items-center shrink-0 mt-px">
               <ActionButton
                 onClick={(e) => {
                   e.stopPropagation()
@@ -261,7 +268,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
         {effectiveDir && isSelected && (
           <div
             className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 pl-2 pb-1 animate-fade-in-up"
-            style={{ paddingLeft: `${depth * 18 + 34}px` }}
+            style={{ paddingLeft: `${depth * 16 + 26}px` }}
           >
             <FolderOpen className="size-3 shrink-0" />
             <span className="truncate">{effectiveDir}</span>
@@ -269,13 +276,25 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
           </div>
         )}
 
+        {/* Directory validation error */}
+        {directoryError && (
+          <div
+            className="flex items-center gap-1.5 text-[11px] text-destructive pl-2 pb-1 animate-fade-in-up"
+            style={{ paddingLeft: `${depth * 16 + 26}px` }}
+            data-testid="directory-error"
+          >
+            <X className="size-3 shrink-0" />
+            <span>{directoryError}</span>
+          </div>
+        )}
+
         {/* Inline add child */}
         {isAddingChild && (
           <div
             className="flex items-center gap-1 px-2 py-1 animate-fade-in-up"
-            style={{ paddingLeft: `${(depth + 1) * 18 + 8}px` }}
+            style={{ paddingLeft: `${(depth + 1) * 16 + 4}px` }}
           >
-            <div className="w-5" />
+            <div className="w-3" />
             <Input
               data-testid="subtask-input"
               placeholder="Sub-task..."

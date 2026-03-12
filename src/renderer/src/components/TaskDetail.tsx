@@ -1,11 +1,17 @@
-import { FolderOpen, Terminal, CheckCircle2, ListTodo } from 'lucide-react'
+import { useState } from 'react'
+import { FolderOpen, Terminal, CheckCircle2, ListTodo, AlertCircle } from 'lucide-react'
 import { useTaskStore } from '@/store/task-store'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 
 export function TaskDetail() {
-  const { selectedTaskId, getTask, getEffectiveDirectory } = useTaskStore()
+  const { selectedTaskId, getTask, getEffectiveDirectory, updateDirectory } = useTaskStore()
+  const [dirInput, setDirInput] = useState('')
+  const [dirError, setDirError] = useState<string | null>(null)
+  const [isEditingDir, setIsEditingDir] = useState(false)
 
   if (!selectedTaskId) {
     return (
@@ -38,6 +44,45 @@ export function TaskDetail() {
 
   const effectiveDir = getEffectiveDirectory(task.id)
   const isDone = task.state === 'done'
+  const isInherited = !task.directory && !!effectiveDir
+
+  const handlePickDirectory = async () => {
+    const dir = await window.api.openDirectory()
+    if (dir) {
+      const result = await window.api.validateRepo(dir)
+      if (result.valid) {
+        setDirError(null)
+        updateDirectory(task.id, dir)
+        setIsEditingDir(false)
+      } else {
+        setDirError(result.error ?? 'Invalid directory')
+      }
+    }
+  }
+
+  const handleSubmitDir = async () => {
+    const trimmed = dirInput.trim()
+    if (!trimmed) {
+      updateDirectory(task.id, undefined)
+      setDirError(null)
+      setIsEditingDir(false)
+      return
+    }
+    const result = await window.api.validateRepo(trimmed)
+    if (result.valid) {
+      setDirError(null)
+      updateDirectory(task.id, trimmed)
+      setIsEditingDir(false)
+    } else {
+      setDirError(result.error ?? 'Invalid directory')
+    }
+  }
+
+  const startEditingDir = () => {
+    setDirInput(task.directory ?? '')
+    setDirError(null)
+    setIsEditingDir(true)
+  }
 
   return (
     <div className="flex flex-col h-full" data-testid="task-detail">
@@ -76,14 +121,83 @@ export function TaskDetail() {
                 </Badge>
               </div>
 
-              {effectiveDir && (
+              {/* Directory display / edit */}
+              {isEditingDir ? (
+                <div className="flex flex-col gap-1.5 animate-fade-in-up-delay">
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      data-testid="directory-input"
+                      value={dirInput}
+                      onChange={(e) => {
+                        setDirInput(e.target.value)
+                        setDirError(null)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSubmitDir()
+                        if (e.key === 'Escape') {
+                          setIsEditingDir(false)
+                          setDirError(null)
+                        }
+                      }}
+                      placeholder="Paste a path to a Git repository..."
+                      className="h-7 text-xs font-mono flex-1"
+                      autoFocus
+                    />
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={handlePickDirectory}
+                      data-testid="browse-directory"
+                    >
+                      <FolderOpen className="size-3 mr-1" />
+                      Browse
+                    </Button>
+                    <Button variant="ghost" size="xs" onClick={handleSubmitDir} data-testid="save-directory">
+                      Save
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => {
+                        setIsEditingDir(false)
+                        setDirError(null)
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                  {dirError && (
+                    <div className="flex items-center gap-1 text-destructive text-[11px]" data-testid="directory-error">
+                      <AlertCircle className="size-3 shrink-0" />
+                      <span>{dirError}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-fade-in-up-delay">
-                  <FolderOpen className="size-3.5 shrink-0 text-muted-foreground/50" />
-                  <code className="truncate max-w-md font-mono text-[11px] bg-muted/50 px-1.5 py-0.5 rounded">
-                    {effectiveDir}
-                  </code>
-                  {!task.directory && (
-                    <span className="italic text-muted-foreground/40 text-[11px]">inherited</span>
+                  {effectiveDir ? (
+                    <>
+                      <FolderOpen className="size-3.5 shrink-0 text-muted-foreground/50" />
+                      <button
+                        className="truncate max-w-md font-mono text-[11px] bg-muted/50 px-1.5 py-0.5 rounded hover:bg-muted cursor-pointer transition-colors"
+                        onClick={startEditingDir}
+                        data-testid="directory-display"
+                      >
+                        {effectiveDir}
+                      </button>
+                      {isInherited && (
+                        <span className="italic text-muted-foreground/40 text-[11px]">inherited</span>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground cursor-pointer transition-colors"
+                      onClick={startEditingDir}
+                      data-testid="set-directory"
+                    >
+                      <FolderOpen className="size-3.5 shrink-0" />
+                      <span>Set directory...</span>
+                    </button>
                   )}
                 </div>
               )}

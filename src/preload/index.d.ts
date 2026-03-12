@@ -5,6 +5,7 @@ interface RundownAPI {
   getTasks(): Promise<Task[]>
   saveTasks(tasks: Task[]): Promise<void>
   openDirectory(): Promise<string | undefined>
+  validateRepo(dirPath: string): Promise<{ valid: boolean; error?: string }>
 }
 
 declare global {

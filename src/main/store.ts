@@ -1,5 +1,7 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import Store from 'electron-store'
+import simpleGit from 'simple-git'
+import { existsSync } from 'fs'
 import type { Task } from '../shared/types'
 
 interface StoreSchema {
@@ -36,4 +38,23 @@ export function registerStoreHandlers(): void {
     if (result.canceled || result.filePaths.length === 0) return undefined
     return result.filePaths[0]
   })
+
+  ipcMain.handle(
+    'git:validate-repo',
+    async (_event, dirPath: string): Promise<{ valid: boolean; error?: string }> => {
+      if (!existsSync(dirPath)) {
+        return { valid: false, error: 'Path does not exist' }
+      }
+      try {
+        const git = simpleGit(dirPath)
+        const isRepo = await git.checkIsRepo()
+        if (!isRepo) {
+          return { valid: false, error: 'Not a Git repository' }
+        }
+        return { valid: true }
+      } catch {
+        return { valid: false, error: 'Not a Git repository' }
+      }
+    }
+  )
 }

@@ -4,7 +4,8 @@ import { electronAPI } from '@electron-toolkit/preload'
 const api = {
   getTasks: () => ipcRenderer.invoke('store:get-tasks'),
   saveTasks: (tasks: unknown[]) => ipcRenderer.invoke('store:save-tasks', tasks),
-  openDirectory: () => ipcRenderer.invoke('dialog:open-directory')
+  openDirectory: () => ipcRenderer.invoke('dialog:open-directory'),
+  validateRepo: (dirPath: string) => ipcRenderer.invoke('git:validate-repo', dirPath)
 }
 
 if (process.contextIsolated) {

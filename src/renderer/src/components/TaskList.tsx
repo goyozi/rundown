@@ -50,13 +50,13 @@ export function TaskList() {
           />
           <Button
             variant="outline"
-            size="icon-sm"
+            size="icon"
             onClick={handleAddTask}
             disabled={!newTaskDescription.trim()}
             className="shrink-0"
             data-testid="add-task-button"
           >
-            <Plus className="size-3.5" />
+            <Plus className="size-4" />
           </Button>
         </div>
       </div>

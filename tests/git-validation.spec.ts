@@ -21,7 +21,17 @@ test.afterEach(async () => {
   tempDirs = []
 })
 
-test('assign valid Git repo via text input', async () => {
+/** Mock the native directory picker to return the given path */
+async function mockOpenDirectory(app: ElectronApplication, dirPath: string): Promise<void> {
+  await app.evaluate(({ dialog }, dir) => {
+    dialog.showOpenDialog = () =>
+      Promise.resolve({ canceled: false, filePaths: [dir] }) as ReturnType<
+        typeof dialog.showOpenDialog
+      >
+  }, dirPath)
+}
+
+test('assign valid Git repo via file picker', async () => {
   ;({ app, page } = await launchApp())
   const gitDir = createTempGitRepo()
   tempDirs.push(gitDir)
@@ -29,19 +39,18 @@ test('assign valid Git repo via text input', async () => {
   await createTask(page, 'Git task')
   await clickTask(page, 'Git task')
 
-  // Click "Set directory..." to start editing
-  await page.getByTestId('set-directory').click()
+  // Mock file picker to return the git directory
+  await mockOpenDirectory(app, gitDir)
 
-  // Type the path and save
-  await page.getByTestId('directory-input').fill(gitDir)
-  await page.getByTestId('save-directory').click()
+  // Click "Set directory..." which now opens the file picker directly
+  await page.getByTestId('set-directory').click()
 
   // Directory should be displayed, no error
   await expect(page.getByTestId('directory-display')).toHaveText(gitDir)
   await expect(page.getByTestId('directory-error')).not.toBeVisible()
 })
 
-test('assign non-Git directory shows error', async () => {
+test('assign non-Git directory shows error dialog', async () => {
   ;({ app, page } = await launchApp())
   const nonGitDir = mkdtempSync(path.join(tmpdir(), 'rundown-nongit-'))
   tempDirs.push(nonGitDir)
@@ -49,27 +58,26 @@ test('assign non-Git directory shows error', async () => {
   await createTask(page, 'Non-git task')
   await clickTask(page, 'Non-git task')
 
-  await page.getByTestId('set-directory').click()
-  await page.getByTestId('directory-input').fill(nonGitDir)
-  await page.getByTestId('save-directory').click()
+  // Mock file picker to return a non-git directory
+  await mockOpenDirectory(app, nonGitDir)
 
-  // Error should be shown
+  await page.getByTestId('set-directory').click()
+
+  // Error dialog should be shown
   await expect(page.getByTestId('directory-error')).toBeVisible()
   await expect(page.getByTestId('directory-error')).toContainText('Not a Git repository')
-
-  // Directory should NOT be saved — input should still be visible
-  await expect(page.getByTestId('directory-input')).toBeVisible()
 })
 
-test('assign non-existent path shows error', async () => {
+test('assign non-existent path shows error dialog', async () => {
   ;({ app, page } = await launchApp())
 
   await createTask(page, 'Bad path task')
   await clickTask(page, 'Bad path task')
 
+  // Mock file picker to return a non-existent path
+  await mockOpenDirectory(app, '/tmp/this-path-does-not-exist-rundown-xyz')
+
   await page.getByTestId('set-directory').click()
-  await page.getByTestId('directory-input').fill('/tmp/this-path-does-not-exist-rundown-xyz')
-  await page.getByTestId('save-directory').click()
 
   await expect(page.getByTestId('directory-error')).toBeVisible()
   await expect(page.getByTestId('directory-error')).toContainText('Path does not exist')
@@ -80,12 +88,11 @@ test('sub-task inherits parent directory', async () => {
   const gitDir = createTempGitRepo()
   tempDirs.push(gitDir)
 
-  // Create parent task and assign directory
+  // Create parent task and assign directory via file picker
   await createTask(page, 'Parent task')
   await clickTask(page, 'Parent task')
+  await mockOpenDirectory(app, gitDir)
   await page.getByTestId('set-directory').click()
-  await page.getByTestId('directory-input').fill(gitDir)
-  await page.getByTestId('save-directory').click()
   await expect(page.getByTestId('directory-display')).toHaveText(gitDir)
 
   // Add a sub-task

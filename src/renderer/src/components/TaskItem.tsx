@@ -8,7 +8,6 @@ import {
   X,
   CheckCircle2,
   Circle,
-  FolderOpen,
   Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -64,14 +63,12 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): R
     selectedTaskId,
     selectTask,
     updateDescription,
-    updateDirectory,
     deleteTask,
     markDone,
     markIdle,
     addTask,
     getChildren,
     getDepth,
-    getEffectiveDirectory,
     activeSessions,
     stopSession
   } = useTaskStore()
@@ -82,15 +79,12 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): R
   const [isAddingChild, setIsAddingChild] = useState(false)
   const [childDescription, setChildDescription] = useState('')
   const [isHovered, setIsHovered] = useState(false)
-  const [directoryError, setDirectoryError] = useState<string | null>(null)
   const [showDoneConfirm, setShowDoneConfirm] = useState(false)
 
   const children = getChildren(task.id)
   const hasChildren = children.length > 0
   const canAddChild = getDepth(task.id) < 4
   const isSelected = selectedTaskId === task.id
-  const effectiveDir = getEffectiveDirectory(task.id)
-  const isInherited = !task.directory && !!effectiveDir
   const isDone = task.state === 'done'
   const sessionActive = activeSessions.has(task.id)
 
@@ -114,19 +108,6 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): R
       setChildDescription('')
       setIsAddingChild(false)
       setIsOpen(true)
-    }
-  }
-
-  const handlePickDirectory = async (): Promise<void> => {
-    const dir = await window.api.openDirectory()
-    if (dir) {
-      const result = await window.api.validateRepo(dir)
-      if (result.valid) {
-        setDirectoryError(null)
-        updateDirectory(task.id, dir)
-      } else {
-        setDirectoryError(result.error ?? 'Invalid directory')
-      }
     }
   }
 
@@ -254,15 +235,6 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): R
               >
                 <Pencil className="size-2.5" />
               </ActionButton>
-              <ActionButton
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handlePickDirectory()
-                }}
-                label="Set directory"
-              >
-                <FolderOpen className="size-2.5" />
-              </ActionButton>
               {canAddChild && (
                 <ActionButton
                   onClick={(e) => {
@@ -289,30 +261,6 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): R
             </div>
           )}
         </div>
-
-        {/* Directory indicator */}
-        {effectiveDir && isSelected && (
-          <div
-            className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 pl-2 pb-1 animate-fade-in-up"
-            style={{ paddingLeft: `${depth * 16 + 26}px` }}
-          >
-            <FolderOpen className="size-3 shrink-0" />
-            <span className="truncate">{effectiveDir}</span>
-            {isInherited && <span className="italic opacity-70">(inherited)</span>}
-          </div>
-        )}
-
-        {/* Directory validation error */}
-        {directoryError && (
-          <div
-            className="flex items-center gap-1.5 text-[11px] text-destructive pl-2 pb-1 animate-fade-in-up"
-            style={{ paddingLeft: `${depth * 16 + 26}px` }}
-            data-testid="directory-error"
-          >
-            <X className="size-3 shrink-0" />
-            <span>{directoryError}</span>
-          </div>
-        )}
 
         {/* Inline add child */}
         {isAddingChild && (

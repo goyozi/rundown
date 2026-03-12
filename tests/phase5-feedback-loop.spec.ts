@@ -9,10 +9,18 @@ let app: ElectronApplication
 let page: Page
 let tempDirs: string[] = []
 
+async function mockOpenDirectory(app: ElectronApplication, dirPath: string): Promise<void> {
+  await app.evaluate(({ dialog }, dir) => {
+    dialog.showOpenDialog = () =>
+      Promise.resolve({ canceled: false, filePaths: [dir] }) as ReturnType<
+        typeof dialog.showOpenDialog
+      >
+  }, dirPath)
+}
+
 async function assignDirectory(page: Page, dir: string): Promise<void> {
+  await mockOpenDirectory(app, dir)
   await page.getByTestId('set-directory').click()
-  await page.getByTestId('directory-input').fill(dir)
-  await page.getByTestId('save-directory').click()
   await expect(page.getByTestId('directory-display')).toHaveText(dir)
 }
 

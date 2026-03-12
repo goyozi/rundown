@@ -13,9 +13,16 @@ import {
 import { useTaskStore } from '@/store/task-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import { TerminalPanel } from './TerminalPanel'
 import { ReviewPanel } from './ReviewPanel'
 import { cn } from '@/lib/utils'
@@ -32,9 +39,7 @@ export function TaskDetail(): React.JSX.Element | null {
     startSession,
     stopSession
   } = useTaskStore()
-  const [dirInput, setDirInput] = useState('')
   const [dirError, setDirError] = useState<string | null>(null)
-  const [isEditingDir, setIsEditingDir] = useState(false)
   const [isStarting, setIsStarting] = useState(false)
   const [activeTab, setActiveTab] = useState<DetailTab>('terminal')
 
@@ -76,42 +81,17 @@ export function TaskDetail(): React.JSX.Element | null {
   const isInProgress = sessionActive
 
   const handlePickDirectory = async (): Promise<void> => {
+    if (sessionActive) return
     const dir = await window.api.openDirectory()
     if (dir) {
       const result = await window.api.validateRepo(dir)
       if (result.valid) {
         setDirError(null)
         updateDirectory(task.id, dir)
-        setIsEditingDir(false)
       } else {
         setDirError(result.error ?? 'Invalid directory')
       }
     }
-  }
-
-  const handleSubmitDir = async (): Promise<void> => {
-    const trimmed = dirInput.trim()
-    if (!trimmed) {
-      updateDirectory(task.id, undefined)
-      setDirError(null)
-      setIsEditingDir(false)
-      return
-    }
-    const result = await window.api.validateRepo(trimmed)
-    if (result.valid) {
-      setDirError(null)
-      updateDirectory(task.id, trimmed)
-      setIsEditingDir(false)
-    } else {
-      setDirError(result.error ?? 'Invalid directory')
-    }
-  }
-
-  const startEditingDir = (): void => {
-    if (sessionActive) return
-    setDirInput(task.directory ?? '')
-    setDirError(null)
-    setIsEditingDir(true)
   }
 
   const handleStartSession = async (): Promise<void> => {
@@ -177,99 +157,36 @@ export function TaskDetail(): React.JSX.Element | null {
                 {stateBadge}
               </div>
 
-              {/* Directory display / edit */}
-              {isEditingDir ? (
-                <div className="flex flex-col gap-1.5 animate-fade-in-up-delay">
-                  <div className="flex items-center gap-1.5">
-                    <Input
-                      data-testid="directory-input"
-                      value={dirInput}
-                      onChange={(e) => {
-                        setDirInput(e.target.value)
-                        setDirError(null)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSubmitDir()
-                        if (e.key === 'Escape') {
-                          setIsEditingDir(false)
-                          setDirError(null)
-                        }
-                      }}
-                      placeholder="Paste a path to a Git repository..."
-                      className="h-7 text-xs font-mono flex-1"
-                      autoFocus
-                    />
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      onClick={handlePickDirectory}
-                      data-testid="browse-directory"
-                    >
-                      <FolderOpen className="size-3 mr-1" />
-                      Browse
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={handleSubmitDir}
-                      data-testid="save-directory"
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => {
-                        setIsEditingDir(false)
-                        setDirError(null)
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                  {dirError && (
-                    <div
-                      className="flex items-center gap-1 text-destructive text-[11px]"
-                      data-testid="directory-error"
-                    >
-                      <AlertCircle className="size-3 shrink-0" />
-                      <span>{dirError}</span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-fade-in-up-delay">
-                  {effectiveDir ? (
-                    <>
-                      <FolderOpen className="size-3.5 shrink-0 text-muted-foreground/50" />
-                      <button
-                        className={cn(
-                          'truncate max-w-md font-mono text-[11px] bg-muted/50 px-1.5 py-0.5 rounded transition-colors',
-                          sessionActive ? 'cursor-default' : 'hover:bg-muted cursor-pointer'
-                        )}
-                        onClick={startEditingDir}
-                        data-testid="directory-display"
-                      >
-                        {effectiveDir}
-                      </button>
-                      {isInherited && (
-                        <span className="italic text-muted-foreground/40 text-[11px]">
-                          inherited
-                        </span>
-                      )}
-                    </>
-                  ) : (
+              {/* Directory display */}
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-fade-in-up-delay">
+                {effectiveDir ? (
+                  <>
+                    <FolderOpen className="size-3.5 shrink-0 text-muted-foreground/50" />
                     <button
-                      className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground cursor-pointer transition-colors"
-                      onClick={startEditingDir}
-                      data-testid="set-directory"
+                      className={cn(
+                        'truncate max-w-md font-mono text-[11px] bg-muted/50 px-1.5 py-0.5 rounded transition-colors',
+                        sessionActive ? 'cursor-default' : 'hover:bg-muted cursor-pointer'
+                      )}
+                      onClick={handlePickDirectory}
+                      data-testid="directory-display"
                     >
-                      <FolderOpen className="size-3.5 shrink-0" />
-                      <span>Set directory...</span>
+                      {effectiveDir}
                     </button>
-                  )}
-                </div>
-              )}
+                    {isInherited && (
+                      <span className="italic text-muted-foreground/40 text-[11px]">inherited</span>
+                    )}
+                  </>
+                ) : (
+                  <button
+                    className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground cursor-pointer transition-colors"
+                    onClick={handlePickDirectory}
+                    data-testid="set-directory"
+                  >
+                    <FolderOpen className="size-3.5 shrink-0" />
+                    <span>Set directory...</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Session controls */}
@@ -383,6 +300,22 @@ export function TaskDetail(): React.JSX.Element | null {
           </div>
         </div>
       )}
+
+      {/* Directory validation error dialog */}
+      <Dialog open={!!dirError} onOpenChange={(open) => !open && setDirError(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="size-4 text-destructive" />
+              Invalid directory
+            </DialogTitle>
+            <DialogDescription data-testid="directory-error">{dirError}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setDirError(null)}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

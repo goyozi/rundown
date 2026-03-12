@@ -19,15 +19,23 @@ test.afterEach(async () => {
   tempDirs = []
 })
 
+async function mockOpenDirectory(app: ElectronApplication, dirPath: string): Promise<void> {
+  await app.evaluate(({ dialog }, dir) => {
+    dialog.showOpenDialog = () =>
+      Promise.resolve({ canceled: false, filePaths: [dir] }) as ReturnType<
+        typeof dialog.showOpenDialog
+      >
+  }, dirPath)
+}
+
 async function createTaskWithDir(page: Page, name: string): Promise<string> {
   const gitDir = createTempGitRepo()
   tempDirs.push(gitDir)
 
   await createTask(page, name)
   await clickTask(page, name)
+  await mockOpenDirectory(app, gitDir)
   await page.getByTestId('set-directory').click()
-  await page.getByTestId('directory-input').fill(gitDir)
-  await page.getByTestId('save-directory').click()
   await expect(page.getByTestId('directory-display')).toHaveText(gitDir)
   return gitDir
 }

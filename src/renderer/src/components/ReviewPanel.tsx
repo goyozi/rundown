@@ -124,6 +124,8 @@ interface ReviewPanelProps {
   directory: string
   taskId: string
   sessionActive: boolean
+  mode: DiffMode
+  onModeChange: (mode: DiffMode) => void
   onSubmitted?: () => void
 }
 
@@ -131,9 +133,10 @@ export function ReviewPanel({
   directory,
   taskId,
   sessionActive,
+  mode,
+  onModeChange,
   onSubmitted
 }: ReviewPanelProps): React.ReactElement {
-  const [mode, setMode] = useState<DiffMode>('uncommitted')
   const [diffText, setDiffText] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -141,6 +144,7 @@ export function ReviewPanel({
   const [branchInfo, setBranchInfo] = useState<{
     current: string
     mainBranch: string | null
+    directory: string
   } | null>(null)
 
   const taskComments = useCommentStore((s) => s.pool[taskId])
@@ -152,7 +156,7 @@ export function ReviewPanel({
   const fetchBranchInfo = useCallback(async () => {
     const result = await window.api.detectBranch(directory)
     if (!result.error) {
-      setBranchInfo({ current: result.current, mainBranch: result.mainBranch })
+      setBranchInfo({ current: result.current, mainBranch: result.mainBranch, directory })
     }
     return result
   }, [directory])
@@ -195,6 +199,7 @@ export function ReviewPanel({
   }, [directory, mode, branchInfo, fetchBranchInfo])
 
   useEffect(() => {
+    setBranchInfo(null)
     fetchBranchInfo()
   }, [fetchBranchInfo])
 
@@ -271,6 +276,19 @@ export function ReviewPanel({
   const isOnMainBranch = branchInfo?.current === branchInfo?.mainBranch
   const branchModeDisabled = !branchInfo?.mainBranch || isOnMainBranch
 
+  // Auto-fallback: if branch mode is disabled but currently selected, switch to uncommitted.
+  // Only act on fresh branchInfo (matching current directory) to avoid stale data from a previous task.
+  useEffect(() => {
+    if (
+      branchInfo &&
+      branchInfo.directory === directory &&
+      branchModeDisabled &&
+      mode === 'branch'
+    ) {
+      onModeChange('uncommitted')
+    }
+  }, [branchInfo, branchModeDisabled, mode, onModeChange, directory])
+
   return (
     <div className="flex flex-col flex-1 min-h-0" data-testid="review-panel">
       {/* Toolbar */}
@@ -284,7 +302,7 @@ export function ReviewPanel({
                 ? 'bg-primary/10 text-primary shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             )}
-            onClick={() => setMode('uncommitted')}
+            onClick={() => onModeChange('uncommitted')}
             data-testid="mode-uncommitted"
           >
             <GitCommitHorizontal className="size-3" />
@@ -300,7 +318,7 @@ export function ReviewPanel({
                     : 'text-muted-foreground hover:text-foreground',
                   branchModeDisabled && 'opacity-40 cursor-not-allowed'
                 )}
-                onClick={() => !branchModeDisabled && setMode('branch')}
+                onClick={() => !branchModeDisabled && onModeChange('branch')}
                 disabled={branchModeDisabled}
                 data-testid="mode-branch"
               >

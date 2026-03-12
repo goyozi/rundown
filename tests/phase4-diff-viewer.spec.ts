@@ -215,3 +215,49 @@ test('Toggle between modes shows correct diff for each', async () => {
   await page.getByTestId('mode-uncommitted').click()
   await expect(page.locator('[data-testid^="diff-file-"]')).toHaveCount(1)
 })
+
+test('Diff mode is remembered per task when switching between tasks', async () => {
+  ;({ app, page } = await launchApp())
+
+  // Task A: feature branch (branch mode available), will use "Branch vs. Main"
+  const dirA = createTempGitRepo()
+  tempDirs.push(dirA)
+  createFeatureBranch(dirA)
+
+  // Task B: on main branch (branch mode disabled), stays on "Uncommitted"
+  const dirB = createTempGitRepo()
+  tempDirs.push(dirB)
+  ensureMainBranch(dirB)
+  dirtyRepo(dirB)
+
+  // Create both tasks and assign directories
+  await createTask(page, 'Task A')
+  await createTask(page, 'Task B')
+
+  await clickTask(page, 'Task A')
+  await assignDirectory(page, dirA)
+  await page.getByTestId('tab-review').click()
+
+  // Switch Task A to branch mode
+  await expect(page.getByTestId('mode-branch')).not.toHaveAttribute('disabled', '', {
+    timeout: 5000
+  })
+  await page.getByTestId('mode-branch').click()
+  await expect(page.getByTestId('diff-files')).toBeVisible()
+
+  // Switch to Task B — should show uncommitted (branch mode disabled on main)
+  await clickTask(page, 'Task B')
+  await assignDirectory(page, dirB)
+  await page.getByTestId('tab-review').click()
+  await expect(page.getByTestId('mode-uncommitted')).toHaveClass(/bg-primary/)
+  await expect(page.getByTestId('diff-files')).toBeVisible()
+
+  // Switch back to Task A — should restore branch mode
+  await clickTask(page, 'Task A')
+  await expect(page.getByTestId('mode-branch')).toHaveClass(/bg-primary/, { timeout: 5000 })
+  await expect(page.getByTestId('diff-files')).toBeVisible()
+
+  // Switch to Task B again — should still be uncommitted
+  await clickTask(page, 'Task B')
+  await expect(page.getByTestId('mode-uncommitted')).toHaveClass(/bg-primary/, { timeout: 5000 })
+})

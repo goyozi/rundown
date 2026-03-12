@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import {
   FolderOpen,
   Terminal,
@@ -28,6 +28,7 @@ import { ReviewPanel } from './ReviewPanel'
 import { cn } from '@/lib/utils'
 
 type DetailTab = 'terminal' | 'review'
+type DiffMode = 'uncommitted' | 'branch'
 
 export function TaskDetail(): React.JSX.Element | null {
   const {
@@ -41,7 +42,25 @@ export function TaskDetail(): React.JSX.Element | null {
   } = useTaskStore()
   const [dirError, setDirError] = useState<string | null>(null)
   const [isStarting, setIsStarting] = useState(false)
-  const [activeTab, setActiveTab] = useState<DetailTab>('terminal')
+  const [tabPerTask, setTabPerTask] = useState<Record<string, DetailTab>>({})
+  const [modePerTask, setModePerTask] = useState<Record<string, DiffMode>>({})
+
+  const activeTab = (selectedTaskId && tabPerTask[selectedTaskId]) || 'terminal'
+  const setActiveTab = (tab: DetailTab): void => {
+    if (selectedTaskId) {
+      setTabPerTask((prev) => ({ ...prev, [selectedTaskId]: tab }))
+    }
+  }
+
+  const diffMode: DiffMode = (selectedTaskId && modePerTask[selectedTaskId]) || 'uncommitted'
+  const setDiffMode = useCallback(
+    (mode: DiffMode): void => {
+      if (selectedTaskId) {
+        setModePerTask((prev) => ({ ...prev, [selectedTaskId]: mode }))
+      }
+    },
+    [selectedTaskId]
+  )
 
   if (!selectedTaskId) {
     return (
@@ -279,6 +298,8 @@ export function TaskDetail(): React.JSX.Element | null {
           directory={effectiveDir}
           taskId={task.id}
           sessionActive={sessionActive}
+          mode={diffMode}
+          onModeChange={setDiffMode}
           onSubmitted={() => setActiveTab('terminal')}
         />
       ) : sessionActive ? (

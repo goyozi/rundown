@@ -1,7 +1,54 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { Terminal } from '@xterm/xterm'
+import { Terminal, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { useTheme } from '@/hooks/use-theme'
 import '@xterm/xterm/css/xterm.css'
+
+const darkTheme: ITheme = {
+  background: '#0f0f14',
+  foreground: '#e0e0e8',
+  cursor: '#8b7cf8',
+  selectionBackground: '#8b7cf833',
+  black: '#1a1a24',
+  red: '#f87171',
+  green: '#6ee7b7',
+  yellow: '#fbbf24',
+  blue: '#818cf8',
+  magenta: '#c084fc',
+  cyan: '#67e8f9',
+  white: '#e0e0e8',
+  brightBlack: '#3a3a4a',
+  brightRed: '#fca5a5',
+  brightGreen: '#a7f3d0',
+  brightYellow: '#fde68a',
+  brightBlue: '#a5b4fc',
+  brightMagenta: '#d8b4fe',
+  brightCyan: '#a5f3fc',
+  brightWhite: '#f0f0f8'
+}
+
+const lightTheme: ITheme = {
+  background: '#f5f5f7',
+  foreground: '#1c1c2e',
+  cursor: '#6b5ce7',
+  selectionBackground: '#6b5ce733',
+  black: '#1c1c2e',
+  red: '#dc2626',
+  green: '#16a34a',
+  yellow: '#ca8a04',
+  blue: '#4f46e5',
+  magenta: '#9333ea',
+  cyan: '#0891b2',
+  white: '#e8e8ec',
+  brightBlack: '#6b7280',
+  brightRed: '#ef4444',
+  brightGreen: '#22c55e',
+  brightYellow: '#eab308',
+  brightBlue: '#6366f1',
+  brightMagenta: '#a855f7',
+  brightCyan: '#06b6d4',
+  brightWhite: '#f8f8fc'
+}
 
 interface TerminalPanelProps {
   taskId: string
@@ -12,6 +59,7 @@ export function TerminalPanel({ taskId }: TerminalPanelProps) {
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const cleanupDataRef = useRef<(() => void) | null>(null)
+  const { resolved } = useTheme()
 
   const handleResize = useCallback(() => {
     const fit = fitAddonRef.current
@@ -26,6 +74,14 @@ export function TerminalPanel({ taskId }: TerminalPanelProps) {
     }
   }, [taskId])
 
+  // Update terminal theme when resolved theme changes
+  useEffect(() => {
+    const term = terminalRef.current
+    if (term) {
+      term.options.theme = resolved === 'dark' ? darkTheme : lightTheme
+    }
+  }, [resolved])
+
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -33,28 +89,7 @@ export function TerminalPanel({ taskId }: TerminalPanelProps) {
       cursorBlink: true,
       fontSize: 13,
       fontFamily: "'Geist Mono', 'SF Mono', Menlo, Monaco, 'Courier New', monospace",
-      theme: {
-        background: '#0f0f14',
-        foreground: '#e0e0e8',
-        cursor: '#8b7cf8',
-        selectionBackground: '#8b7cf833',
-        black: '#1a1a24',
-        red: '#f87171',
-        green: '#6ee7b7',
-        yellow: '#fbbf24',
-        blue: '#818cf8',
-        magenta: '#c084fc',
-        cyan: '#67e8f9',
-        white: '#e0e0e8',
-        brightBlack: '#3a3a4a',
-        brightRed: '#fca5a5',
-        brightGreen: '#a7f3d0',
-        brightYellow: '#fde68a',
-        brightBlue: '#a5b4fc',
-        brightMagenta: '#d8b4fe',
-        brightCyan: '#a5f3fc',
-        brightWhite: '#f0f0f8'
-      },
+      theme: resolved === 'dark' ? darkTheme : lightTheme,
       allowProposedApi: true
     })
 
@@ -104,11 +139,13 @@ export function TerminalPanel({ taskId }: TerminalPanelProps) {
     }
   }, [taskId, handleResize])
 
+  const bg = resolved === 'dark' ? '#0f0f14' : '#f5f5f7'
+
   return (
     <div
       ref={containerRef}
       className="flex-1 min-h-0"
-      style={{ padding: '8px 4px 4px 8px', background: '#0f0f14' }}
+      style={{ padding: '8px 4px 4px 8px', background: bg }}
       data-testid="terminal-panel"
     />
   )

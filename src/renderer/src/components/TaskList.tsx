@@ -1,17 +1,24 @@
 import { useState } from 'react'
-import { Plus, ListTodo } from 'lucide-react'
+import { Plus, ListTodo, Sun, Moon, Monitor } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTaskStore } from '@/store/task-store'
+import { useTheme } from '@/hooks/use-theme'
 import { TaskItem } from './TaskItem'
+
+const themeIcon = { light: Sun, dark: Moon, system: Monitor } as const
+const themeLabel = { light: 'Light', dark: 'Dark', system: 'System' } as const
 
 export function TaskList() {
   const { getRootTasks, addTask } = useTaskStore()
   const [newTaskDescription, setNewTaskDescription] = useState('')
+  const { mode, cycle } = useTheme()
 
   const rootTasks = getRootTasks()
+  const Icon = themeIcon[mode]
 
   const handleAddTask = () => {
     const trimmed = newTaskDescription.trim()
@@ -30,6 +37,20 @@ export function TaskList() {
             <ListTodo className="size-3.5 text-primary" />
           </div>
           <h1 className="text-sm font-semibold tracking-tight">Rundown</h1>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="ml-auto size-7"
+                onClick={cycle}
+                data-testid="theme-toggle"
+              >
+                <Icon className="size-3.5 text-muted-foreground" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{themeLabel[mode]}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 

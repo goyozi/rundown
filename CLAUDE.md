@@ -21,4 +21,12 @@ Electron + electron-vite (v5), React + TypeScript, Tailwind CSS v4, shadcn/ui, Z
 
 ## Rules
 
-- **Always add dependencies with `pnpm add`** (or `pnpm add -D` for dev deps). Never edit version numbers in `package.json` by hand.
+- **Always use `pnpm` — never `npm` or `npx`.** This project uses pnpm as its package manager. Use `pnpm add` / `pnpm add -D` for dependencies, `pnpm dlx` instead of `npx`, and `pnpm run` (or just `pnpm <script>`) to invoke scripts. Never edit version numbers in `package.json` by hand.
+- **Use predefined scripts** from `package.json` instead of running tools directly. Key commands:
+  - `pnpm dev` — start the app in dev mode
+  - `pnpm build` — typecheck + build
+  - `pnpm test` — build + run Playwright tests
+  - `pnpm test:norebuild` — run Playwright tests without rebuilding
+  - `pnpm lint` — run ESLint
+  - `pnpm format` — run Prettier
+  - `pnpm typecheck` — run TypeScript type checking

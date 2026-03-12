@@ -12,7 +12,7 @@ import { TaskItem } from './TaskItem'
 const themeIcon = { light: Sun, dark: Moon, system: Monitor } as const
 const themeLabel = { light: 'Light', dark: 'Dark', system: 'System' } as const
 
-export function TaskList() {
+export function TaskList(): React.JSX.Element {
   const { getRootTasks, addTask } = useTaskStore()
   const [newTaskDescription, setNewTaskDescription] = useState('')
   const { mode, cycle } = useTheme()
@@ -20,7 +20,7 @@ export function TaskList() {
   const rootTasks = getRootTasks()
   const Icon = themeIcon[mode]
 
-  const handleAddTask = () => {
+  const handleAddTask = (): void => {
     const trimmed = newTaskDescription.trim()
     if (trimmed) {
       addTask(trimmed)
@@ -86,13 +86,14 @@ export function TaskList() {
       <ScrollArea className="flex-1">
         <div className="px-2 pb-2">
           {rootTasks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-in-up" data-testid="empty-task-list">
+            <div
+              className="flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-in-up"
+              data-testid="empty-task-list"
+            >
               <div className="flex items-center justify-center size-10 rounded-xl bg-muted/80 mb-3">
                 <ListTodo className="size-5 text-muted-foreground/60" />
               </div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">
-                No tasks yet
-              </p>
+              <p className="text-sm font-medium text-muted-foreground mb-1">No tasks yet</p>
               <p className="text-xs text-muted-foreground/60">
                 Create your first task above to get started
               </p>

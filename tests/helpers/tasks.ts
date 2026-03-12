@@ -8,7 +8,10 @@ export async function createTask(page: Page, description: string): Promise<void>
   await page.getByText(description).waitFor()
 }
 
-export async function getTaskItem(page: Page, description: string) {
+export async function getTaskItem(
+  page: Page,
+  description: string
+): Promise<import('playwright').Locator> {
   return page.locator(`[data-task-description="${description}"]`)
 }
 

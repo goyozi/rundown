@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { ElectronApplication, Page } from 'playwright'
 import { rmSync } from 'fs'
 import { launchApp } from './helpers/app'
-import { createTask, clickTask, addSubtask, markTaskDone } from './helpers/tasks'
+import { createTask, clickTask, markTaskDone } from './helpers/tasks'
 import { createTempGitRepo } from './fixtures/git-repo'
 
 let app: ElectronApplication

@@ -71,7 +71,7 @@ A local desktop app that combines a todo list, terminal-based Claude Code sessio
 1. User adds inline comments on the diff.
 2. User clicks "Submit to Claude."
 3. The app serializes **all pooled comments** (including those hidden in the other diff mode) into a structured text block (file path + line number + comment body) and writes it to the active Claude Code session's stdin.
-4. If any comments are currently hidden (because their file is not in the active diff view), a small helper text appears beneath the submit button: e.g., *"All 7 comments will be submitted (3 hidden in current view)."*
+4. If any comments are currently hidden (because their file is not in the active diff view), a small helper text appears beneath the submit button: e.g., _"All 7 comments will be submitted (3 hidden in current view)."_
 5. The terminal panel becomes focused so the user can watch Claude respond.
 6. All comments are deleted immediately after submission. They are ephemeral — they exist only to compose the feedback message and are discarded once sent.
 
@@ -92,7 +92,7 @@ A local desktop app that combines a todo list, terminal-based Claude Code sessio
 ### 7. Completing a Task
 
 1. User clicks "Mark as Done" on a task (or sub-task).
-2. If a session is currently running, a confirmation dialog appears: *"A session is still active. Stop the session and mark as done?"*
+2. If a session is currently running, a confirmation dialog appears: _"A session is still active. Stop the session and mark as done?"_
    - **Yes** — the session is killed and the task moves to **Done**.
    - **Cancel** — no action taken.
 3. If no session is running, the task moves directly to **Done**.
@@ -104,10 +104,12 @@ A local desktop app that combines a todo list, terminal-based Claude Code sessio
 The review panel offers two diff modes, toggled via a selector:
 
 ### Uncommitted Changes
+
 - Shows the diff between the current working tree and the last Git commit (`HEAD`).
 - Useful for reviewing work-in-progress before Claude (or the user) commits.
 
 ### Branch vs. Main
+
 - Shows the diff between the current branch HEAD and the `main` or `master` branch (auto-detected, with `main` preferred if both exist).
 - Useful for reviewing the full scope of the feature branch, including already-committed work.
 - Includes both committed and uncommitted changes on the current branch.
@@ -150,31 +152,31 @@ The exact format can be tuned, but it should be human-readable and useful as a C
 
 ### Must Have (MVP)
 
-| # | Requirement |
-|---|-------------|
-| 1 | Create, edit, delete todo tasks with a description and assigned local directory. |
-| 2 | Directory validation — must be a Git repository, show error otherwise. |
-| 3 | Sub-task support up to 5 levels of nesting, each independently sessionable. Sub-tasks inherit parent directory by default, with optional override. |
-| 4 | Task state management (Idle → In Progress → Done). |
-| 5 | Clickable task list — clicking navigates to the task's session view (or a "no active session" placeholder). Description editable via hover icon. |
-| 6 | Launch a Claude Code terminal session scoped to a task's directory. |
-| 7 | One active session per task/sub-task; multiple sessions allowed across the hierarchy. |
-| 8 | Embedded terminal view showing the live Claude Code session. |
-| 9 | Stop a running session without marking the task as done. |
-| 10 | "Mark as Done" with confirmation dialog to optionally stop an active session. |
-| 11 | Git-based diff viewer with two modes: uncommitted changes and branch vs. main/master. |
-| 12 | Auto-detection of main vs. master branch. |
-| 13 | Inline commenting on specific file lines within the diff view. |
-| 14 | Comments persist across diff mode switches in a shared pool; hidden when their file is not in the active view. |
-| 15 | "Submit to Claude" — serialize all pooled comments and pipe into the terminal session, then delete all comments. Show helper text with hidden comment count when applicable. |
-| 16 | Task and sub-task data persisted locally across app restarts. |
+| #   | Requirement                                                                                                                                                                  |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Create, edit, delete todo tasks with a description and assigned local directory.                                                                                             |
+| 2   | Directory validation — must be a Git repository, show error otherwise.                                                                                                       |
+| 3   | Sub-task support up to 5 levels of nesting, each independently sessionable. Sub-tasks inherit parent directory by default, with optional override.                           |
+| 4   | Task state management (Idle → In Progress → Done).                                                                                                                           |
+| 5   | Clickable task list — clicking navigates to the task's session view (or a "no active session" placeholder). Description editable via hover icon.                             |
+| 6   | Launch a Claude Code terminal session scoped to a task's directory.                                                                                                          |
+| 7   | One active session per task/sub-task; multiple sessions allowed across the hierarchy.                                                                                        |
+| 8   | Embedded terminal view showing the live Claude Code session.                                                                                                                 |
+| 9   | Stop a running session without marking the task as done.                                                                                                                     |
+| 10  | "Mark as Done" with confirmation dialog to optionally stop an active session.                                                                                                |
+| 11  | Git-based diff viewer with two modes: uncommitted changes and branch vs. main/master.                                                                                        |
+| 12  | Auto-detection of main vs. master branch.                                                                                                                                    |
+| 13  | Inline commenting on specific file lines within the diff view.                                                                                                               |
+| 14  | Comments persist across diff mode switches in a shared pool; hidden when their file is not in the active view.                                                               |
+| 15  | "Submit to Claude" — serialize all pooled comments and pipe into the terminal session, then delete all comments. Show helper text with hidden comment count when applicable. |
+| 16  | Task and sub-task data persisted locally across app restarts.                                                                                                                |
 
 ### Nice to Have (MVP Stretch)
 
-| # | Requirement |
-|---|-------------|
-| 17 | Markdown rendering in comments. |
-| 18 | Keyboard shortcuts for common actions (start session, switch to review, submit feedback). |
+| #   | Requirement                                                                               |
+| --- | ----------------------------------------------------------------------------------------- |
+| 17  | Markdown rendering in comments.                                                           |
+| 18  | Keyboard shortcuts for common actions (start session, switch to review, submit feedback). |
 
 ### Explicitly Out of Scope
 

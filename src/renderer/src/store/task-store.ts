@@ -110,15 +110,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       let tasks = state.tasks.filter((t) => !idsToRemove.has(t.id))
       if (task?.parentId) {
         tasks = tasks.map((t) =>
-          t.id === task.parentId
-            ? { ...t, children: t.children.filter((cid) => cid !== id) }
-            : t
+          t.id === task.parentId ? { ...t, children: t.children.filter((cid) => cid !== id) } : t
         )
       }
       const selectedTaskId =
-        state.selectedTaskId && idsToRemove.has(state.selectedTaskId)
-          ? null
-          : state.selectedTaskId
+        state.selectedTaskId && idsToRemove.has(state.selectedTaskId) ? null : state.selectedTaskId
       return { tasks, selectedTaskId }
     })
     get().persist()

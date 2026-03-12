@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import React, { useEffect, useRef, useCallback } from 'react'
 import { Terminal, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { useTheme } from '@/hooks/use-theme'
@@ -54,7 +54,7 @@ interface TerminalPanelProps {
   taskId: string
 }
 
-export function TerminalPanel({ taskId }: TerminalPanelProps) {
+export function TerminalPanel({ taskId }: TerminalPanelProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -137,7 +137,7 @@ export function TerminalPanel({ taskId }: TerminalPanelProps) {
       terminalRef.current = null
       fitAddonRef.current = null
     }
-  }, [taskId, handleResize])
+  }, [taskId, handleResize, resolved])
 
   const bg = resolved === 'dark' ? '#0f0f14' : '#f5f5f7'
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
   FolderOpen,
   Terminal,
@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils'
 
 type DetailTab = 'terminal' | 'review'
 
-export function TaskDetail() {
+export function TaskDetail(): React.JSX.Element | null {
   const {
     selectedTaskId,
     getTask,
@@ -75,7 +75,7 @@ export function TaskDetail() {
   const sessionActive = activeSessions.has(task.id)
   const isInProgress = sessionActive
 
-  const handlePickDirectory = async () => {
+  const handlePickDirectory = async (): Promise<void> => {
     const dir = await window.api.openDirectory()
     if (dir) {
       const result = await window.api.validateRepo(dir)
@@ -89,7 +89,7 @@ export function TaskDetail() {
     }
   }
 
-  const handleSubmitDir = async () => {
+  const handleSubmitDir = async (): Promise<void> => {
     const trimmed = dirInput.trim()
     if (!trimmed) {
       updateDirectory(task.id, undefined)
@@ -107,14 +107,14 @@ export function TaskDetail() {
     }
   }
 
-  const startEditingDir = () => {
+  const startEditingDir = (): void => {
     if (sessionActive) return
     setDirInput(task.directory ?? '')
     setDirError(null)
     setIsEditingDir(true)
   }
 
-  const handleStartSession = async () => {
+  const handleStartSession = async (): Promise<void> => {
     if (!effectiveDir || isStarting) return
     setIsStarting(true)
     try {
@@ -127,7 +127,7 @@ export function TaskDetail() {
     }
   }
 
-  const handleStopSession = async () => {
+  const handleStopSession = async (): Promise<void> => {
     await window.api.ptyKill(task.id)
     stopSession(task.id)
   }
@@ -245,9 +245,7 @@ export function TaskDetail() {
                       <button
                         className={cn(
                           'truncate max-w-md font-mono text-[11px] bg-muted/50 px-1.5 py-0.5 rounded transition-colors',
-                          sessionActive
-                            ? 'cursor-default'
-                            : 'hover:bg-muted cursor-pointer'
+                          sessionActive ? 'cursor-default' : 'hover:bg-muted cursor-pointer'
                         )}
                         onClick={startEditingDir}
                         data-testid="directory-display"
@@ -369,10 +367,7 @@ export function TaskDetail() {
             <div className="flex items-center justify-center size-12 rounded-xl bg-muted/40 border border-border/40">
               <Terminal className="size-5 text-muted-foreground/25" />
             </div>
-            <p
-              className="text-sm text-muted-foreground/40"
-              data-testid="no-active-session"
-            >
+            <p className="text-sm text-muted-foreground/40" data-testid="no-active-session">
               No active session
             </p>
             {effectiveDir && (

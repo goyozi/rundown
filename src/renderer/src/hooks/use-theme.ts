@@ -8,7 +8,7 @@ const STORAGE_KEY = 'rundown-theme'
 let mode: ThemeMode = (localStorage.getItem(STORAGE_KEY) as ThemeMode) || 'system'
 const listeners = new Set<() => void>()
 
-function notify() {
+function notify(): void {
   listeners.forEach((l) => l())
 }
 
@@ -20,7 +20,7 @@ function resolve(m: ThemeMode): ResolvedTheme {
   return m === 'system' ? getSystemTheme() : m
 }
 
-function apply(resolved: ResolvedTheme) {
+function apply(resolved: ResolvedTheme): void {
   document.documentElement.classList.toggle('dark', resolved === 'dark')
 }
 
@@ -35,7 +35,12 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
   }
 })
 
-export function useTheme() {
+export function useTheme(): {
+  mode: ThemeMode
+  resolved: ResolvedTheme
+  setTheme: (next: ThemeMode) => void
+  cycle: () => void
+} {
   const current = useSyncExternalStore(
     (cb) => {
       listeners.add(cb)
@@ -50,14 +55,14 @@ export function useTheme() {
     apply(resolved)
   }, [resolved])
 
-  function setTheme(next: ThemeMode) {
+  function setTheme(next: ThemeMode): void {
     mode = next
     localStorage.setItem(STORAGE_KEY, next)
     apply(resolve(next))
     notify()
   }
 
-  function cycle() {
+  function cycle(): void {
     const order: ThemeMode[] = ['light', 'dark', 'system']
     const idx = order.indexOf(mode)
     setTheme(order[(idx + 1) % order.length])

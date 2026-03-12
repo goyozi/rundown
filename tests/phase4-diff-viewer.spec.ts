@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { ElectronApplication, Page } from 'playwright'
-import { rmSync, writeFileSync } from 'fs'
+import { rmSync } from 'fs'
 import { launchApp } from './helpers/app'
 import { createTask, clickTask } from './helpers/tasks'
 import {

@@ -35,9 +35,11 @@ Goal: The directory field becomes meaningful.
 Goal: Spawn and interact with a real Claude Code process inside the app.
 
 ### Setup
+
 - Configure native module rebuilding for node-pty: add `@electron/rebuild` (or configure electron-vite's native module support) so node-pty compiles against Electron's Node headers. Verify the PTY can spawn a process before writing UI code.
 
 ### Implementation
+
 - IPC handlers: `pty:spawn`, `pty:write`, `pty:resize`, `pty:kill`, `pty:data`
 - Main process session map: `Map<string, IPty>` keyed by task ID (see tech_stack.md § Session Tracking)
 - "Start Session" button on a task → resolves effective directory (own or inherited from parent) → spawns `claude` (or `CLAUDE_BIN`) via node-pty in that directory

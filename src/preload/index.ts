@@ -18,13 +18,13 @@ const api = {
     ipcRenderer.invoke('pty:resize', taskId, cols, rows),
   ptyKill: (taskId: string) => ipcRenderer.invoke('pty:kill', taskId),
   onPtyData: (callback: (taskId: string, data: string) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, taskId: string, data: string) =>
+    const handler = (_event: Electron.IpcRendererEvent, taskId: string, data: string): void =>
       callback(taskId, data)
     ipcRenderer.on('pty:data', handler)
     return () => ipcRenderer.removeListener('pty:data', handler)
   },
   onPtyExit: (callback: (taskId: string) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, taskId: string) => callback(taskId)
+    const handler = (_event: Electron.IpcRendererEvent, taskId: string): void => callback(taskId)
     ipcRenderer.on('pty:exit', handler)
     return () => ipcRenderer.removeListener('pty:exit', handler)
   }

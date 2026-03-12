@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
   ChevronRight,
   Plus,
@@ -38,7 +38,7 @@ function ActionButton({
   className?: string
   testId?: string
   children: React.ReactNode
-}) {
+}): React.ReactElement {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -59,7 +59,7 @@ function ActionButton({
   )
 }
 
-export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
+export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): React.ReactElement {
   const {
     selectedTaskId,
     selectTask,
@@ -94,7 +94,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
   const isDone = task.state === 'done'
   const sessionActive = activeSessions.has(task.id)
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = (): void => {
     const trimmed = editValue.trim()
     if (trimmed && trimmed !== task.description) {
       updateDescription(task.id, trimmed)
@@ -102,12 +102,12 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
     setIsEditing(false)
   }
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = (): void => {
     setEditValue(task.description)
     setIsEditing(false)
   }
 
-  const handleAddChild = () => {
+  const handleAddChild = (): void => {
     const trimmed = childDescription.trim()
     if (trimmed) {
       addTask(trimmed, task.id)
@@ -117,7 +117,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
     }
   }
 
-  const handlePickDirectory = async () => {
+  const handlePickDirectory = async (): Promise<void> => {
     const dir = await window.api.openDirectory()
     if (dir) {
       const result = await window.api.validateRepo(dir)
@@ -130,7 +130,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
     }
   }
 
-  const handleToggleDone = async (e: React.MouseEvent) => {
+  const handleToggleDone = async (e: React.MouseEvent): Promise<void> => {
     e.stopPropagation()
     if (isDone) {
       markIdle(task.id)
@@ -141,7 +141,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
     }
   }
 
-  const handleConfirmDone = async () => {
+  const handleConfirmDone = async (): Promise<void> => {
     await window.api.ptyKill(task.id)
     stopSession(task.id)
     markDone(task.id)
@@ -176,10 +176,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
                 onClick={(e) => e.stopPropagation()}
               >
                 <ChevronRight
-                  className={cn(
-                    'size-3 transition-transform duration-200',
-                    isOpen && 'rotate-90'
-                  )}
+                  className={cn('size-3 transition-transform duration-200', isOpen && 'rotate-90')}
                 />
               </Button>
             </CollapsibleTrigger>
@@ -225,20 +222,10 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
                 className="h-6 text-sm"
                 autoFocus
               />
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                className="size-5"
-                onClick={handleSaveEdit}
-              >
+              <Button variant="ghost" size="icon-xs" className="size-5" onClick={handleSaveEdit}>
                 <Check className="size-3" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                className="size-5"
-                onClick={handleCancelEdit}
-              >
+              <Button variant="ghost" size="icon-xs" className="size-5" onClick={handleCancelEdit}>
                 <X className="size-3" />
               </Button>
             </div>
@@ -349,12 +336,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
               className="h-6 text-sm flex-1"
               autoFocus
             />
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className="size-5"
-              onClick={handleAddChild}
-            >
+            <Button variant="ghost" size="icon-xs" className="size-5" onClick={handleAddChild}>
               <Check className="size-3" />
             </Button>
             <Button

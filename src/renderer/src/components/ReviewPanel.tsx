@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { parseDiff, Diff, Hunk, isInsert, isDelete } from 'react-diff-view'
 import type { FileData, HunkData, DiffType } from 'react-diff-view'
 import 'react-diff-view/style/index.css'
@@ -44,7 +44,7 @@ function computeStats(files: FileData[]): DiffStats {
   return { filesChanged: files.length, additions, deletions }
 }
 
-function fileIcon(type: string) {
+function fileIcon(type: string): React.ReactElement {
   switch (type) {
     case 'add':
       return <FilePlus2 className="size-3.5 text-success shrink-0" />
@@ -57,7 +57,7 @@ function fileIcon(type: string) {
   }
 }
 
-function fileStats(file: FileData) {
+function fileStats(file: FileData): { adds: number; dels: number } {
   let adds = 0
   let dels = 0
   for (const hunk of file.hunks) {
@@ -73,7 +73,7 @@ interface ReviewPanelProps {
   directory: string
 }
 
-export function ReviewPanel({ directory }: ReviewPanelProps) {
+export function ReviewPanel({ directory }: ReviewPanelProps): React.ReactElement {
   const [mode, setMode] = useState<DiffMode>('uncommitted')
   const [diffText, setDiffText] = useState('')
   const [loading, setLoading] = useState(false)
@@ -148,7 +148,7 @@ export function ReviewPanel({ directory }: ReviewPanelProps) {
 
   const stats = useMemo(() => computeStats(files), [files])
 
-  const toggleCollapse = (filePath: string) => {
+  const toggleCollapse = (filePath: string): void => {
     setCollapsedFiles((prev) => {
       const next = new Set(prev)
       if (next.has(filePath)) {
@@ -212,12 +212,13 @@ export function ReviewPanel({ directory }: ReviewPanelProps) {
 
         {/* Branch info */}
         {branchInfo && (
-          <span className="text-[11px] text-muted-foreground/50 font-mono" data-testid="branch-info">
+          <span
+            className="text-[11px] text-muted-foreground/50 font-mono"
+            data-testid="branch-info"
+          >
             {branchInfo.current}
             {mode === 'branch' && branchInfo.mainBranch && (
-              <span className="text-muted-foreground/30">
-                {' '}← {branchInfo.mainBranch}
-              </span>
+              <span className="text-muted-foreground/30"> ← {branchInfo.mainBranch}</span>
             )}
           </span>
         )}
@@ -324,23 +325,21 @@ export function ReviewPanel({ directory }: ReviewPanelProps) {
                       variant="outline"
                       className="text-[10px] font-mono px-1.5 py-0 h-5 gap-1.5 border-border/40"
                     >
-                      {fStats.adds > 0 && (
-                        <span className="text-success">+{fStats.adds}</span>
-                      )}
-                      {fStats.dels > 0 && (
-                        <span className="text-destructive">-{fStats.dels}</span>
-                      )}
+                      {fStats.adds > 0 && <span className="text-success">+{fStats.adds}</span>}
+                      {fStats.dels > 0 && <span className="text-destructive">-{fStats.dels}</span>}
                     </Badge>
                   </button>
 
                   {/* File diff */}
                   {!isCollapsed && (
                     <div className="diff-wrapper border-t border-border/30 overflow-x-auto text-xs">
-                      <Diff viewType="unified" diffType={file.type as DiffType} hunks={file.hunks as HunkData[]}>
+                      <Diff
+                        viewType="unified"
+                        diffType={file.type as DiffType}
+                        hunks={file.hunks as HunkData[]}
+                      >
                         {(hunks: HunkData[]) =>
-                          hunks.map((hunk) => (
-                            <Hunk key={hunk.content} hunk={hunk} />
-                          ))
+                          hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)
                         }
                       </Diff>
                     </div>

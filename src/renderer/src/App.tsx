@@ -31,13 +31,13 @@ function App(): React.JSX.Element {
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
 
-    const onMouseMove = (ev: MouseEvent) => {
+    const onMouseMove = (ev: MouseEvent): void => {
       if (!isDragging.current) return
       const newWidth = Math.min(MAX_SIDEBAR, Math.max(MIN_SIDEBAR, ev.clientX))
       setSidebarWidth(newWidth)
     }
 
-    const onMouseUp = () => {
+    const onMouseUp = (): void => {
       isDragging.current = false
       document.body.style.cursor = ''
       document.body.style.userSelect = ''

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { parseDiff, Diff, Hunk, isInsert, isDelete } from 'react-diff-view'
-import type { FileData, HunkData, DiffType } from 'react-diff-view'
+import { parseDiff, Diff, Hunk, getChangeKey, isInsert, isDelete, isNormal } from 'react-diff-view'
+import type { FileData, HunkData, DiffType, ChangeData } from 'react-diff-view'
 import 'react-diff-view/style/index.css'
 import {
   RefreshCw,
@@ -15,12 +15,16 @@ import {
   AlertCircle,
   Loader2,
   GitBranch,
-  GitCommitHorizontal
+  GitCommitHorizontal,
+  Send,
+  X,
+  MessageSquare
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { useCommentStore } from '@/store/comment-store'
 
 type DiffMode = 'uncommitted' | 'branch'
 
@@ -69,11 +73,66 @@ function fileStats(file: FileData): { adds: number; dels: number } {
   return { adds, dels }
 }
 
-interface ReviewPanelProps {
-  directory: string
+function getLineNumber(change: ChangeData): number {
+  if (isNormal(change)) return change.newLineNumber
+  return change.lineNumber
 }
 
-export function ReviewPanel({ directory }: ReviewPanelProps): React.ReactElement {
+interface CommentWidgetProps {
+  taskId: string
+  commentId: string
+  body: string
+  autoFocus?: boolean
+}
+
+function CommentWidget({
+  taskId,
+  commentId,
+  body,
+  autoFocus
+}: CommentWidgetProps): React.ReactElement {
+  const { updateComment, removeComment } = useCommentStore()
+
+  return (
+    <div className="flex gap-2 items-start px-3 py-2" data-testid={`comment-widget-${commentId}`}>
+      <MessageSquare className="size-3.5 text-primary/60 mt-1.5 shrink-0" />
+      <textarea
+        className="flex-1 min-h-[60px] text-xs bg-background/80 border border-border/60 rounded-md px-2.5 py-1.5 resize-y focus:outline-none focus:ring-1 focus:ring-ring font-sans"
+        placeholder="Write your review comment..."
+        value={body}
+        onChange={(e) => updateComment(taskId, commentId, e.target.value)}
+        autoFocus={autoFocus}
+        data-testid={`comment-textarea-${commentId}`}
+      />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            className="mt-1 p-0.5 rounded hover:bg-muted/50 text-muted-foreground/50 hover:text-destructive transition-colors"
+            onClick={() => removeComment(taskId, commentId)}
+            data-testid={`comment-remove-${commentId}`}
+          >
+            <X className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Remove comment</TooltipContent>
+      </Tooltip>
+    </div>
+  )
+}
+
+interface ReviewPanelProps {
+  directory: string
+  taskId: string
+  sessionActive: boolean
+  onSubmitted?: () => void
+}
+
+export function ReviewPanel({
+  directory,
+  taskId,
+  sessionActive,
+  onSubmitted
+}: ReviewPanelProps): React.ReactElement {
   const [mode, setMode] = useState<DiffMode>('uncommitted')
   const [diffText, setDiffText] = useState('')
   const [loading, setLoading] = useState(false)
@@ -83,6 +142,12 @@ export function ReviewPanel({ directory }: ReviewPanelProps): React.ReactElement
     current: string
     mainBranch: string | null
   } | null>(null)
+
+  const taskComments = useCommentStore((s) => s.pool[taskId])
+  const addComment = useCommentStore((s) => s.addComment)
+  const clearComments = useCommentStore((s) => s.clearComments)
+  const comments = useMemo(() => taskComments ?? [], [taskComments])
+  const commentCount = comments.length
 
   const fetchBranchInfo = useCallback(async () => {
     const result = await window.api.detectBranch(directory)
@@ -148,6 +213,13 @@ export function ReviewPanel({ directory }: ReviewPanelProps): React.ReactElement
 
   const stats = useMemo(() => computeStats(files), [files])
 
+  const visibleFilePaths = useMemo(() => new Set(files.map((f) => f.newPath || f.oldPath)), [files])
+
+  const hiddenCommentCount = useMemo(
+    () => comments.filter((c) => !visibleFilePaths.has(c.filePath)).length,
+    [comments, visibleFilePaths]
+  )
+
   const toggleCollapse = (filePath: string): void => {
     setCollapsedFiles((prev) => {
       const next = new Set(prev)
@@ -158,6 +230,42 @@ export function ReviewPanel({ directory }: ReviewPanelProps): React.ReactElement
       }
       return next
     })
+  }
+
+  const handleAddComment = (filePath: string, change: ChangeData): void => {
+    const changeKey = getChangeKey(change)
+    const lineNumber = getLineNumber(change)
+    addComment(taskId, filePath, changeKey, lineNumber)
+  }
+
+  const handleSubmitToClaude = async (): Promise<void> => {
+    if (commentCount === 0 || !sessionActive) return
+
+    // Serialize comments into feedback format
+    const lines: string[] = ['Here is my review feedback on the current changes:', '']
+
+    // Group comments by file
+    const byFile = new Map<string, typeof comments>()
+    for (const comment of comments) {
+      const existing = byFile.get(comment.filePath) ?? []
+      existing.push(comment)
+      byFile.set(comment.filePath, existing)
+    }
+
+    for (const [filePath, fileComments] of byFile) {
+      for (const comment of fileComments) {
+        if (!comment.body.trim()) continue
+        lines.push(`## ${filePath} (line ${comment.lineNumber})`)
+        lines.push(comment.body.trim())
+        lines.push('')
+      }
+    }
+
+    const feedbackText = lines.join('\n')
+    await window.api.ptyWrite(taskId, feedbackText + '\n')
+
+    clearComments(taskId)
+    onSubmitted?.()
   }
 
   const isOnMainBranch = branchInfo?.current === branchInfo?.mainBranch
@@ -246,6 +354,18 @@ export function ReviewPanel({ directory }: ReviewPanelProps): React.ReactElement
           </div>
         )}
 
+        {/* Comment count badge */}
+        {commentCount > 0 && (
+          <Badge
+            variant="outline"
+            className="text-[10px] font-mono px-1.5 py-0 h-5 gap-1 border-primary/30 text-primary"
+            data-testid="comment-count-badge"
+          >
+            <MessageSquare className="size-3" />
+            {commentCount}
+          </Badge>
+        )}
+
         {/* Refresh */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -301,6 +421,21 @@ export function ReviewPanel({ directory }: ReviewPanelProps): React.ReactElement
               const filePath = file.newPath || file.oldPath
               const isCollapsed = collapsedFiles.has(filePath)
               const fStats = fileStats(file)
+              const fileComments = comments.filter((c) => c.filePath === filePath)
+              const fileCommentCount = fileComments.length
+
+              // Build widgets map for this file
+              const widgets: Record<string, React.ReactNode> = {}
+              for (const comment of fileComments) {
+                widgets[comment.changeKey] = (
+                  <CommentWidget
+                    key={comment.id}
+                    taskId={taskId}
+                    commentId={comment.id}
+                    body={comment.body}
+                  />
+                )
+              }
 
               return (
                 <div
@@ -321,6 +456,15 @@ export function ReviewPanel({ directory }: ReviewPanelProps): React.ReactElement
                     )}
                     {fileIcon(file.type)}
                     <code className="text-xs font-mono truncate flex-1">{filePath}</code>
+                    {fileCommentCount > 0 && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-mono px-1 py-0 h-4 gap-0.5 border-primary/30 text-primary"
+                      >
+                        <MessageSquare className="size-2.5" />
+                        {fileCommentCount}
+                      </Badge>
+                    )}
                     <Badge
                       variant="outline"
                       className="text-[10px] font-mono px-1.5 py-0 h-5 gap-1.5 border-border/40"
@@ -337,6 +481,12 @@ export function ReviewPanel({ directory }: ReviewPanelProps): React.ReactElement
                         viewType="unified"
                         diffType={file.type as DiffType}
                         hunks={file.hunks as HunkData[]}
+                        widgets={widgets}
+                        gutterEvents={{
+                          onClick: ({ change }) => {
+                            if (change) handleAddComment(filePath, change)
+                          }
+                        }}
                       >
                         {(hunks: HunkData[]) =>
                           hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)
@@ -348,6 +498,46 @@ export function ReviewPanel({ directory }: ReviewPanelProps): React.ReactElement
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Submit footer */}
+      {commentCount > 0 && (
+        <div
+          className="border-t border-border/50 bg-muted/20 px-4 py-3 flex items-center gap-3"
+          data-testid="submit-footer"
+        >
+          <div className="flex-1 text-xs text-muted-foreground">
+            {hiddenCommentCount > 0 ? (
+              <span data-testid="hidden-comment-info">
+                All {commentCount} {commentCount === 1 ? 'comment' : 'comments'} will be submitted (
+                {hiddenCommentCount} hidden in current view).
+              </span>
+            ) : (
+              <span>
+                {commentCount} {commentCount === 1 ? 'comment' : 'comments'} ready to submit
+              </span>
+            )}
+          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleSubmitToClaude}
+                disabled={!sessionActive}
+                data-testid="submit-to-claude"
+              >
+                <Send className="size-3.5 mr-1.5" />
+                Submit to Claude
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {sessionActive
+                ? 'Send all review comments to the active Claude session'
+                : 'Start a session first to submit feedback'}
+            </TooltipContent>
+          </Tooltip>
         </div>
       )}
     </div>

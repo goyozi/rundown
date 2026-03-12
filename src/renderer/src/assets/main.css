@@ -235,3 +235,27 @@ body {
 .diff-wrapper .diff-code {
   padding-left: 1em;
 }
+
+/* Clickable gutter for adding comments */
+.diff-wrapper .diff-gutter {
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.diff-wrapper .diff-gutter:hover {
+  background-color: oklch(0.488 0.15 264 / 15%) !important;
+}
+.dark .diff-wrapper .diff-gutter:hover {
+  background-color: oklch(0.65 0.18 264 / 20%) !important;
+}
+
+/* Comment widget row styling */
+.diff-wrapper .diff-widget {
+  background: oklch(0.488 0.15 264 / 5%);
+  border-top: 1px solid oklch(0.488 0.15 264 / 15%);
+  border-bottom: 1px solid oklch(0.488 0.15 264 / 15%);
+}
+.dark .diff-wrapper .diff-widget {
+  background: oklch(0.65 0.18 264 / 8%);
+  border-top-color: oklch(0.65 0.18 264 / 15%);
+  border-bottom-color: oklch(0.65 0.18 264 / 15%);
+}

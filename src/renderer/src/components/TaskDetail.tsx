@@ -358,7 +358,12 @@ export function TaskDetail(): React.JSX.Element | null {
 
       {/* Content area */}
       {activeTab === 'review' && effectiveDir ? (
-        <ReviewPanel directory={effectiveDir} />
+        <ReviewPanel
+          directory={effectiveDir}
+          taskId={task.id}
+          sessionActive={sessionActive}
+          onSubmitted={() => setActiveTab('terminal')}
+        />
       ) : sessionActive ? (
         <TerminalPanel taskId={task.id} />
       ) : (

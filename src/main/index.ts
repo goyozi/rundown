@@ -3,7 +3,7 @@ import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { registerStoreHandlers } from './store'
+import { registerStoreHandlers, getWindowState, saveWindowState } from './store'
 import { registerPtyHandlers, killAllSessions } from './pty'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -11,10 +11,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
+  const windowState = getWindowState()
+
   // Create the browser window.
   const win = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: windowState.width,
+    height: windowState.height,
+    ...(windowState.x !== undefined && windowState.y !== undefined
+      ? { x: windowState.x, y: windowState.y }
+      : {}),
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
@@ -25,6 +30,34 @@ function createWindow(): void {
   })
 
   mainWindow = win
+
+  if (windowState.isMaximized) {
+    win.maximize()
+  }
+
+  // Save window state on changes (debounced via resize/move end)
+  function saveCurrentState(): void {
+    if (win.isDestroyed()) return
+    const isMaximized = win.isMaximized()
+    if (!isMaximized) {
+      const bounds = win.getBounds()
+      saveWindowState({
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        isMaximized: false
+      })
+    } else {
+      saveWindowState({ ...getWindowState(), isMaximized: true })
+    }
+  }
+
+  win.on('resized', saveCurrentState)
+  win.on('moved', saveCurrentState)
+  win.on('maximize', saveCurrentState)
+  win.on('unmaximize', saveCurrentState)
+  win.on('close', saveCurrentState)
 
   win.on('ready-to-show', () => {
     win.show()

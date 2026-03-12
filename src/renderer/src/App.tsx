@@ -15,6 +15,7 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     loadTasks()
+    window.api.getSidebarWidth().then((w) => setSidebarWidth(w))
   }, [loadTasks])
 
   // Listen for PTY process exits to clean up session state
@@ -37,12 +38,14 @@ function App(): React.JSX.Element {
       setSidebarWidth(newWidth)
     }
 
-    const onMouseUp = (): void => {
+    const onMouseUp = (ev: MouseEvent): void => {
       isDragging.current = false
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
+      const finalWidth = Math.min(MAX_SIDEBAR, Math.max(MIN_SIDEBAR, ev.clientX))
+      window.api.saveSidebarWidth(finalWidth)
     }
 
     document.addEventListener('mousemove', onMouseMove)

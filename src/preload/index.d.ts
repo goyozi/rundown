@@ -4,6 +4,8 @@ import type { Task } from '../shared/types'
 interface RundownAPI {
   getTasks(): Promise<Task[]>
   saveTasks(tasks: Task[]): Promise<void>
+  getSidebarWidth(): Promise<number>
+  saveSidebarWidth(width: number): Promise<void>
   openDirectory(): Promise<string | undefined>
   validateRepo(dirPath: string): Promise<{ valid: boolean; error?: string }>
   detectBranch(

@@ -4,6 +4,8 @@ import { electronAPI } from '@electron-toolkit/preload'
 const api = {
   getTasks: () => ipcRenderer.invoke('store:get-tasks'),
   saveTasks: (tasks: unknown[]) => ipcRenderer.invoke('store:save-tasks', tasks),
+  getSidebarWidth: () => ipcRenderer.invoke('store:get-sidebar-width'),
+  saveSidebarWidth: (width: number) => ipcRenderer.invoke('store:save-sidebar-width', width),
   openDirectory: () => ipcRenderer.invoke('dialog:open-directory'),
   validateRepo: (dirPath: string) => ipcRenderer.invoke('git:validate-repo', dirPath),
   detectBranch: (dirPath: string) => ipcRenderer.invoke('git:detect-branch', dirPath),

@@ -4,13 +4,29 @@ import simpleGit from 'simple-git'
 import { existsSync } from 'fs'
 import type { Task } from '../shared/types'
 
+interface WindowState {
+  x?: number
+  y?: number
+  width: number
+  height: number
+  isMaximized: boolean
+}
+
 interface StoreSchema {
   tasks: Task[]
+  windowState: WindowState
+  sidebarWidth: number
 }
 
 const storeOptions: ConstructorParameters<typeof Store<StoreSchema>>[0] = {
   defaults: {
-    tasks: []
+    tasks: [],
+    windowState: {
+      width: 900,
+      height: 670,
+      isMaximized: false
+    },
+    sidebarWidth: 320
   }
 }
 
@@ -20,6 +36,14 @@ if (process.env.ELECTRON_STORE_PATH) {
 
 const store = new Store<StoreSchema>(storeOptions)
 
+export function getWindowState(): WindowState {
+  return store.get('windowState')
+}
+
+export function saveWindowState(state: WindowState): void {
+  store.set('windowState', state)
+}
+
 export function registerStoreHandlers(): void {
   ipcMain.handle('store:get-tasks', () => {
     return store.get('tasks')
@@ -27,6 +51,14 @@ export function registerStoreHandlers(): void {
 
   ipcMain.handle('store:save-tasks', (_event, tasks: Task[]) => {
     store.set('tasks', tasks)
+  })
+
+  ipcMain.handle('store:get-sidebar-width', () => {
+    return store.get('sidebarWidth')
+  })
+
+  ipcMain.handle('store:save-sidebar-width', (_event, width: number) => {
+    store.set('sidebarWidth', width)
   })
 
   ipcMain.handle('dialog:open-directory', async (event) => {

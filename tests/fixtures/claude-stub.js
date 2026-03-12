@@ -22,4 +22,6 @@ switch (preset) {
     })
     break
 }
-// Never exits on its own — tests kill it via Stop Session.
+// Keep the event loop alive so the process never exits on its own.
+// Tests kill it via Stop Session.
+process.stdin.resume()

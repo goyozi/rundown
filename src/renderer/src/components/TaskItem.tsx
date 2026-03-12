@@ -8,12 +8,21 @@ import {
   X,
   CheckCircle2,
   Circle,
-  FolderOpen
+  FolderOpen,
+  Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import { useTaskStore, type Task } from '@/store/task-store'
 import { cn } from '@/lib/utils'
 
@@ -62,7 +71,9 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
     addTask,
     getChildren,
     getDepth,
-    getEffectiveDirectory
+    getEffectiveDirectory,
+    activeSessions,
+    stopSession
   } = useTaskStore()
 
   const [isOpen, setIsOpen] = useState(true)
@@ -72,6 +83,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
   const [childDescription, setChildDescription] = useState('')
   const [isHovered, setIsHovered] = useState(false)
   const [directoryError, setDirectoryError] = useState<string | null>(null)
+  const [showDoneConfirm, setShowDoneConfirm] = useState(false)
 
   const children = getChildren(task.id)
   const hasChildren = children.length > 0
@@ -80,6 +92,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
   const effectiveDir = getEffectiveDirectory(task.id)
   const isInherited = !task.directory && !!effectiveDir
   const isDone = task.state === 'done'
+  const sessionActive = activeSessions.has(task.id)
 
   const handleSaveEdit = () => {
     const trimmed = editValue.trim()
@@ -117,13 +130,22 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
     }
   }
 
-  const handleToggleDone = (e: React.MouseEvent) => {
+  const handleToggleDone = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isDone) {
       markIdle(task.id)
+    } else if (sessionActive) {
+      setShowDoneConfirm(true)
     } else {
       markDone(task.id)
     }
+  }
+
+  const handleConfirmDone = async () => {
+    await window.api.ptyKill(task.id)
+    stopSession(task.id)
+    markDone(task.id)
+    setShowDoneConfirm(false)
   }
 
   return (
@@ -142,7 +164,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
           onMouseLeave={() => setIsHovered(false)}
           data-testid={`task-item-${task.id}`}
           data-task-description={task.description}
-          data-task-state={task.state}
+          data-task-state={sessionActive ? 'in-progress' : task.state}
         >
           {/* Expand/collapse chevron */}
           {hasChildren ? (
@@ -165,19 +187,23 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
             <div className="w-3 shrink-0" />
           )}
 
-          {/* Done/idle toggle */}
+          {/* Done/idle/in-progress toggle */}
           <button
             onClick={handleToggleDone}
             className={cn(
               'shrink-0 mt-px transition-all duration-200',
               isDone
                 ? 'text-success hover:text-success/70'
-                : 'text-muted-foreground/40 hover:text-muted-foreground'
+                : sessionActive
+                  ? 'text-primary hover:text-primary/70'
+                  : 'text-muted-foreground/40 hover:text-muted-foreground'
             )}
             data-testid="toggle-done"
           >
             {isDone ? (
               <CheckCircle2 className="size-[15px]" />
+            ) : sessionActive ? (
+              <Loader2 className="size-[15px] animate-spin" />
             ) : (
               <Circle className="size-[15px]" />
             )}
@@ -185,7 +211,10 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
 
           {/* Description - editing or display */}
           {isEditing ? (
-            <div className="flex items-center gap-1 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="flex items-center gap-1 flex-1 min-w-0"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Input
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
@@ -196,10 +225,20 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
                 className="h-6 text-sm"
                 autoFocus
               />
-              <Button variant="ghost" size="icon-xs" className="size-5" onClick={handleSaveEdit}>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="size-5"
+                onClick={handleSaveEdit}
+              >
                 <Check className="size-3" />
               </Button>
-              <Button variant="ghost" size="icon-xs" className="size-5" onClick={handleCancelEdit}>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="size-5"
+                onClick={handleCancelEdit}
+              >
                 <X className="size-3" />
               </Button>
             </div>
@@ -310,7 +349,12 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
               className="h-6 text-sm flex-1"
               autoFocus
             />
-            <Button variant="ghost" size="icon-xs" className="size-5" onClick={handleAddChild}>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="size-5"
+              onClick={handleAddChild}
+            >
               <Check className="size-3" />
             </Button>
             <Button
@@ -335,6 +379,30 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
           </CollapsibleContent>
         )}
       </Collapsible>
+
+      {/* Confirmation dialog for marking done with active session */}
+      <Dialog open={showDoneConfirm} onOpenChange={setShowDoneConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Stop session and mark as done?</DialogTitle>
+            <DialogDescription>
+              A session is still active. Stop the session and mark as done?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDoneConfirm(false)}
+              data-testid="cancel-done"
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmDone} data-testid="confirm-done">
+              Yes, mark as done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

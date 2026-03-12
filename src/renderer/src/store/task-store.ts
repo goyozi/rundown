@@ -7,6 +7,7 @@ interface TaskStore {
   tasks: Task[]
   selectedTaskId: string | null
   loaded: boolean
+  activeSessions: Set<string>
 
   loadTasks: () => Promise<void>
   persist: () => Promise<void>
@@ -19,6 +20,10 @@ interface TaskStore {
   markIdle: (id: string) => void
   selectTask: (id: string | null) => void
 
+  startSession: (id: string) => void
+  stopSession: (id: string) => void
+  hasActiveSession: (id: string) => boolean
+
   getTask: (id: string) => Task | undefined
   getRootTasks: () => Task[]
   getChildren: (parentId: string) => Task[]
@@ -30,6 +35,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
   selectedTaskId: null,
   loaded: false,
+  activeSessions: new Set(),
 
   loadTasks: async () => {
     const tasks = await window.api.getTasks()
@@ -135,6 +141,24 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   selectTask: (id) => {
     set({ selectedTaskId: id })
   },
+
+  startSession: (id) => {
+    set((state) => {
+      const next = new Set(state.activeSessions)
+      next.add(id)
+      return { activeSessions: next }
+    })
+  },
+
+  stopSession: (id) => {
+    set((state) => {
+      const next = new Set(state.activeSessions)
+      next.delete(id)
+      return { activeSessions: next }
+    })
+  },
+
+  hasActiveSession: (id) => get().activeSessions.has(id),
 
   getTask: (id) => get().tasks.find((t) => t.id === id),
 

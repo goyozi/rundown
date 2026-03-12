@@ -7,6 +7,7 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
+        external: ['node-pty'],
         output: {
           format: 'es'
         }

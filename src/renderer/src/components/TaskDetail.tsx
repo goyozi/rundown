@@ -1,23 +1,42 @@
 import { useState } from 'react'
-import { FolderOpen, Terminal, CheckCircle2, ListTodo, AlertCircle } from 'lucide-react'
+import {
+  FolderOpen,
+  Terminal,
+  CheckCircle2,
+  ListTodo,
+  AlertCircle,
+  Play,
+  Square,
+  Loader2
+} from 'lucide-react'
 import { useTaskStore } from '@/store/task-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { TerminalPanel } from './TerminalPanel'
 import { cn } from '@/lib/utils'
 
 export function TaskDetail() {
-  const { selectedTaskId, getTask, getEffectiveDirectory, updateDirectory } = useTaskStore()
+  const {
+    selectedTaskId,
+    getTask,
+    getEffectiveDirectory,
+    updateDirectory,
+    activeSessions,
+    startSession,
+    stopSession
+  } = useTaskStore()
   const [dirInput, setDirInput] = useState('')
   const [dirError, setDirError] = useState<string | null>(null)
   const [isEditingDir, setIsEditingDir] = useState(false)
+  const [isStarting, setIsStarting] = useState(false)
 
   if (!selectedTaskId) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-4 animate-fade-in-up">
-          {/* Decorative icon cluster */}
           <div className="relative">
             <div className="flex items-center justify-center size-16 rounded-2xl bg-muted/50 border border-border/50">
               <ListTodo className="size-7 text-muted-foreground/30" />
@@ -27,7 +46,10 @@ export function TaskDetail() {
             </div>
           </div>
           <div className="text-center space-y-1">
-            <p className="text-sm font-medium text-muted-foreground/70" data-testid="no-task-selected">
+            <p
+              className="text-sm font-medium text-muted-foreground/70"
+              data-testid="no-task-selected"
+            >
               Select a task to begin
             </p>
             <p className="text-xs text-muted-foreground/40">
@@ -45,6 +67,8 @@ export function TaskDetail() {
   const effectiveDir = getEffectiveDirectory(task.id)
   const isDone = task.state === 'done'
   const isInherited = !task.directory && !!effectiveDir
+  const sessionActive = activeSessions.has(task.id)
+  const isInProgress = sessionActive
 
   const handlePickDirectory = async () => {
     const dir = await window.api.openDirectory()
@@ -79,10 +103,54 @@ export function TaskDetail() {
   }
 
   const startEditingDir = () => {
+    if (sessionActive) return
     setDirInput(task.directory ?? '')
     setDirError(null)
     setIsEditingDir(true)
   }
+
+  const handleStartSession = async () => {
+    if (!effectiveDir || isStarting) return
+    setIsStarting(true)
+    try {
+      const result = await window.api.ptySpawn(task.id, effectiveDir)
+      if (result.success) {
+        startSession(task.id)
+      }
+    } finally {
+      setIsStarting(false)
+    }
+  }
+
+  const handleStopSession = async () => {
+    await window.api.ptyKill(task.id)
+    stopSession(task.id)
+  }
+
+  const stateBadge = isInProgress ? (
+    <Badge
+      variant="outline"
+      className="shrink-0 text-[10px] uppercase tracking-wider font-medium bg-primary/10 text-primary border-primary/20"
+    >
+      <Loader2 className="size-3 mr-0.5 animate-spin" />
+      In Progress
+    </Badge>
+  ) : isDone ? (
+    <Badge
+      variant="secondary"
+      className="shrink-0 text-[10px] uppercase tracking-wider font-medium bg-success/10 text-success border-success/20"
+    >
+      <CheckCircle2 className="size-3 mr-0.5" />
+      Done
+    </Badge>
+  ) : (
+    <Badge
+      variant="outline"
+      className="shrink-0 text-[10px] uppercase tracking-wider font-medium text-muted-foreground"
+    >
+      Idle
+    </Badge>
+  )
 
   return (
     <div className="flex flex-col h-full" data-testid="task-detail">
@@ -101,24 +169,7 @@ export function TaskDetail() {
                 >
                   {task.description}
                 </h2>
-                <Badge
-                  variant={isDone ? 'secondary' : 'outline'}
-                  className={cn(
-                    'shrink-0 text-[10px] uppercase tracking-wider font-medium',
-                    isDone
-                      ? 'bg-success/10 text-success border-success/20'
-                      : 'text-muted-foreground'
-                  )}
-                >
-                  {isDone ? (
-                    <>
-                      <CheckCircle2 className="size-3 mr-0.5" />
-                      Done
-                    </>
-                  ) : (
-                    'Active'
-                  )}
-                </Badge>
+                {stateBadge}
               </div>
 
               {/* Directory display / edit */}
@@ -152,7 +203,12 @@ export function TaskDetail() {
                       <FolderOpen className="size-3 mr-1" />
                       Browse
                     </Button>
-                    <Button variant="ghost" size="xs" onClick={handleSubmitDir} data-testid="save-directory">
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={handleSubmitDir}
+                      data-testid="save-directory"
+                    >
                       Save
                     </Button>
                     <Button
@@ -167,7 +223,10 @@ export function TaskDetail() {
                     </Button>
                   </div>
                   {dirError && (
-                    <div className="flex items-center gap-1 text-destructive text-[11px]" data-testid="directory-error">
+                    <div
+                      className="flex items-center gap-1 text-destructive text-[11px]"
+                      data-testid="directory-error"
+                    >
                       <AlertCircle className="size-3 shrink-0" />
                       <span>{dirError}</span>
                     </div>
@@ -179,14 +238,21 @@ export function TaskDetail() {
                     <>
                       <FolderOpen className="size-3.5 shrink-0 text-muted-foreground/50" />
                       <button
-                        className="truncate max-w-md font-mono text-[11px] bg-muted/50 px-1.5 py-0.5 rounded hover:bg-muted cursor-pointer transition-colors"
+                        className={cn(
+                          'truncate max-w-md font-mono text-[11px] bg-muted/50 px-1.5 py-0.5 rounded transition-colors',
+                          sessionActive
+                            ? 'cursor-default'
+                            : 'hover:bg-muted cursor-pointer'
+                        )}
                         onClick={startEditingDir}
                         data-testid="directory-display"
                       >
                         {effectiveDir}
                       </button>
                       {isInherited && (
-                        <span className="italic text-muted-foreground/40 text-[11px]">inherited</span>
+                        <span className="italic text-muted-foreground/40 text-[11px]">
+                          inherited
+                        </span>
                       )}
                     </>
                   ) : (
@@ -202,23 +268,80 @@ export function TaskDetail() {
                 </div>
               )}
             </div>
+
+            {/* Session controls */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {sessionActive ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleStopSession}
+                      className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                      data-testid="stop-session"
+                    >
+                      <Square className="size-3.5 mr-1.5 fill-current" />
+                      Stop Session
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Kill the active Claude Code session</TooltipContent>
+                </Tooltip>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleStartSession}
+                      disabled={!effectiveDir || isStarting}
+                      data-testid="start-session"
+                    >
+                      {isStarting ? (
+                        <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <Play className="size-3.5 mr-1.5 fill-current" />
+                      )}
+                      Start Session
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {effectiveDir
+                      ? 'Launch Claude Code in the task directory'
+                      : 'Assign a directory first'}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       <Separator />
 
-      {/* Session area placeholder */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 animate-fade-in-up-delay-2">
-          <div className="flex items-center justify-center size-12 rounded-xl bg-muted/40 border border-border/40">
-            <Terminal className="size-5 text-muted-foreground/25" />
+      {/* Session area */}
+      {sessionActive ? (
+        <TerminalPanel taskId={task.id} />
+      ) : (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 animate-fade-in-up-delay-2">
+            <div className="flex items-center justify-center size-12 rounded-xl bg-muted/40 border border-border/40">
+              <Terminal className="size-5 text-muted-foreground/25" />
+            </div>
+            <p
+              className="text-sm text-muted-foreground/40"
+              data-testid="no-active-session"
+            >
+              No active session
+            </p>
+            {effectiveDir && (
+              <p className="text-xs text-muted-foreground/30">
+                Click Start Session to launch Claude Code
+              </p>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground/40" data-testid="no-active-session">
-            No active session
-          </p>
         </div>
-      </div>
+      )}
     </div>
   )
 }

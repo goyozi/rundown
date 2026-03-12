@@ -5,7 +5,25 @@ const api = {
   getTasks: () => ipcRenderer.invoke('store:get-tasks'),
   saveTasks: (tasks: unknown[]) => ipcRenderer.invoke('store:save-tasks', tasks),
   openDirectory: () => ipcRenderer.invoke('dialog:open-directory'),
-  validateRepo: (dirPath: string) => ipcRenderer.invoke('git:validate-repo', dirPath)
+  validateRepo: (dirPath: string) => ipcRenderer.invoke('git:validate-repo', dirPath),
+
+  // PTY
+  ptySpawn: (taskId: string, cwd: string) => ipcRenderer.invoke('pty:spawn', taskId, cwd),
+  ptyWrite: (taskId: string, data: string) => ipcRenderer.invoke('pty:write', taskId, data),
+  ptyResize: (taskId: string, cols: number, rows: number) =>
+    ipcRenderer.invoke('pty:resize', taskId, cols, rows),
+  ptyKill: (taskId: string) => ipcRenderer.invoke('pty:kill', taskId),
+  onPtyData: (callback: (taskId: string, data: string) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, taskId: string, data: string) =>
+      callback(taskId, data)
+    ipcRenderer.on('pty:data', handler)
+    return () => ipcRenderer.removeListener('pty:data', handler)
+  },
+  onPtyExit: (callback: (taskId: string) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, taskId: string) => callback(taskId)
+    ipcRenderer.on('pty:exit', handler)
+    return () => ipcRenderer.removeListener('pty:exit', handler)
+  }
 }
 
 if (process.contextIsolated) {

@@ -9,13 +9,21 @@ const MAX_SIDEBAR = 520
 const DEFAULT_SIDEBAR = 320
 
 function App(): React.JSX.Element {
-  const { loadTasks, loaded } = useTaskStore()
+  const { loadTasks, loaded, stopSession } = useTaskStore()
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR)
   const isDragging = useRef(false)
 
   useEffect(() => {
     loadTasks()
   }, [loadTasks])
+
+  // Listen for PTY process exits to clean up session state
+  useEffect(() => {
+    const cleanup = window.api.onPtyExit((taskId) => {
+      stopSession(taskId)
+    })
+    return cleanup
+  }, [stopSession])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()

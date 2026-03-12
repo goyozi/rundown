@@ -2,6 +2,7 @@
   "name": "rundown",
   "version": "1.0.0",
   "description": "An Electron application with React and TypeScript",
+  "type": "module",
   "main": "./out/main/index.js",
   "author": "example.com",
   "homepage": "https://electron-vite.org",
@@ -18,7 +19,9 @@
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux"
+    "build:linux": "electron-vite build && electron-builder --linux",
+    "test": "electron-vite build && playwright test",
+    "test:norebuild": "playwright test"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
@@ -45,6 +48,7 @@
     "@electron-toolkit/eslint-config-ts": "^3.1.0",
     "@electron-toolkit/tsconfig": "^2.0.0",
     "@electron/rebuild": "^4.0.3",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.2.1",
     "@types/node": "^22.19.1",
     "@types/react": "^19.2.7",
@@ -57,6 +61,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "playwright": "^1.58.2",
     "prettier": "^3.7.4",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",

@@ -254,9 +254,9 @@ body {
 /* Dark mode diff colors */
 .dark .diff-wrapper .diff {
   --diff-gutter-insert-background-color: oklch(0.25 0.06 145);
-  --diff-gutter-insert-text-color: oklch(0.75 0.12 145);
+  --diff-gutter-insert-text-color: oklch(0.82 0.14 145);
   --diff-gutter-delete-background-color: oklch(0.25 0.05 27);
-  --diff-gutter-delete-text-color: oklch(0.75 0.1 27);
+  --diff-gutter-delete-text-color: oklch(0.82 0.12 27);
   --diff-code-insert-background-color: oklch(0.2 0.03 145);
   --diff-code-insert-edit-background-color: oklch(0.28 0.08 145);
   --diff-code-delete-background-color: oklch(0.2 0.025 27);
@@ -346,39 +346,39 @@ body {
 .dark .diff-wrapper .token.prolog,
 .dark .diff-wrapper .token.doctype,
 .dark .diff-wrapper .token.cdata {
-  color: oklch(0.55 0 0);
+  color: oklch(0.62 0 0);
   font-style: italic;
 }
 .dark .diff-wrapper .token.keyword,
 .dark .diff-wrapper .token.operator,
 .dark .diff-wrapper .token.builtin {
-  color: oklch(0.75 0.14 300);
+  color: oklch(0.82 0.16 300);
 }
 .dark .diff-wrapper .token.string,
 .dark .diff-wrapper .token.attr-value {
-  color: oklch(0.72 0.12 145);
+  color: oklch(0.8 0.14 145);
 }
 .dark .diff-wrapper .token.number,
 .dark .diff-wrapper .token.boolean {
-  color: oklch(0.76 0.13 70);
+  color: oklch(0.83 0.15 70);
 }
 .dark .diff-wrapper .token.function {
-  color: oklch(0.76 0.14 264);
+  color: oklch(0.83 0.16 264);
 }
 .dark .diff-wrapper .token.class-name,
 .dark .diff-wrapper .token.tag {
-  color: oklch(0.74 0.14 30);
+  color: oklch(0.82 0.16 30);
 }
 .dark .diff-wrapper .token.attr-name {
-  color: oklch(0.72 0.12 70);
+  color: oklch(0.8 0.14 70);
 }
 .dark .diff-wrapper .token.punctuation {
-  color: oklch(0.6 0 0);
+  color: oklch(0.68 0 0);
 }
 .dark .diff-wrapper .token.property {
-  color: oklch(0.74 0.12 30);
+  color: oklch(0.82 0.14 30);
 }
 .dark .diff-wrapper .token.regex,
 .dark .diff-wrapper .token.important {
-  color: oklch(0.74 0.14 50);
+  color: oklch(0.82 0.16 50);
 }

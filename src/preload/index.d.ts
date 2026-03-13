@@ -24,7 +24,11 @@ interface RundownAPI {
   setNativeTheme(theme: 'light' | 'dark' | 'system'): Promise<void>
 
   // PTY
-  ptySpawn(taskId: string, cwd: string): Promise<{ success: boolean; error?: string }>
+  ptySpawn(
+    taskId: string,
+    cwd: string,
+    theme?: 'light' | 'dark'
+  ): Promise<{ success: boolean; error?: string }>
   ptyWrite(taskId: string, data: string): Promise<void>
   ptyResize(taskId: string, cols: number, rows: number): Promise<void>
   ptyKill(taskId: string): Promise<void>

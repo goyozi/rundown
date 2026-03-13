@@ -24,7 +24,8 @@ const api = {
   setNativeTheme: (theme: 'light' | 'dark' | 'system') => ipcRenderer.invoke('theme:set', theme),
 
   // PTY
-  ptySpawn: (taskId: string, cwd: string) => ipcRenderer.invoke('pty:spawn', taskId, cwd),
+  ptySpawn: (taskId: string, cwd: string, theme: 'light' | 'dark' = 'dark') =>
+    ipcRenderer.invoke('pty:spawn', taskId, cwd, theme),
   ptyWrite: (taskId: string, data: string) => ipcRenderer.invoke('pty:write', taskId, data),
   ptyResize: (taskId: string, cols: number, rows: number) =>
     ipcRenderer.invoke('pty:resize', taskId, cols, rows),

@@ -11,6 +11,7 @@ import {
   Code2
 } from 'lucide-react'
 import { useTaskStore } from '@/store/task-store'
+import { useTheme } from '@/hooks/use-theme'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -40,6 +41,7 @@ export function TaskDetail(): React.JSX.Element | null {
     startSession,
     stopSession
   } = useTaskStore()
+  const { resolved } = useTheme()
   const [dirError, setDirError] = useState<string | null>(null)
   const [isStarting, setIsStarting] = useState(false)
   const [tabPerTask, setTabPerTask] = useState<Record<string, DetailTab>>({})
@@ -117,7 +119,7 @@ export function TaskDetail(): React.JSX.Element | null {
     if (!effectiveDir || isStarting) return
     setIsStarting(true)
     try {
-      const result = await window.api.ptySpawn(task.id, effectiveDir)
+      const result = await window.api.ptySpawn(task.id, effectiveDir, resolved)
       if (result.success) {
         startSession(task.id)
       }

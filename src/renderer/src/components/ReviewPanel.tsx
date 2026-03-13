@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { parseDiff, Diff, Hunk, getChangeKey, isInsert, isDelete, isNormal } from 'react-diff-view'
+import {
+  parseDiff,
+  Diff,
+  Hunk,
+  tokenize,
+  markEdits,
+  getChangeKey,
+  isInsert,
+  isDelete,
+  isNormal
+} from 'react-diff-view'
 import type { FileData, HunkData, DiffType, ChangeData } from 'react-diff-view'
+import refractor from 'refractor'
 import 'react-diff-view/style/index.css'
 import {
   RefreshCw,
@@ -32,6 +43,79 @@ interface DiffStats {
   filesChanged: number
   additions: number
   deletions: number
+}
+
+const EXT_TO_LANG: Record<string, string> = {
+  ts: 'typescript',
+  tsx: 'tsx',
+  js: 'javascript',
+  jsx: 'jsx',
+  json: 'json',
+  css: 'css',
+  scss: 'scss',
+  less: 'less',
+  html: 'html',
+  xml: 'xml',
+  svg: 'xml',
+  md: 'markdown',
+  yaml: 'yaml',
+  yml: 'yaml',
+  py: 'python',
+  rb: 'ruby',
+  rs: 'rust',
+  go: 'go',
+  java: 'java',
+  kt: 'kotlin',
+  swift: 'swift',
+  sh: 'bash',
+  bash: 'bash',
+  zsh: 'bash',
+  sql: 'sql',
+  graphql: 'graphql',
+  gql: 'graphql',
+  c: 'c',
+  cpp: 'cpp',
+  h: 'c',
+  hpp: 'cpp',
+  cs: 'csharp',
+  php: 'php',
+  lua: 'lua',
+  toml: 'toml',
+  ini: 'ini',
+  dockerfile: 'docker',
+  makefile: 'makefile'
+}
+
+function detectLanguage(filePath: string): string | undefined {
+  const name = filePath.split('/').pop()?.toLowerCase() ?? ''
+  if (name === 'dockerfile') return 'docker'
+  if (name === 'makefile') return 'makefile'
+  const ext = name.split('.').pop() ?? ''
+  const lang = EXT_TO_LANG[ext]
+  if (!lang) return undefined
+  // Verify refractor has the grammar loaded
+  try {
+    refractor.highlight('', lang)
+    return lang
+  } catch {
+    return undefined
+  }
+}
+
+function tokenizeFile(file: FileData): ReturnType<typeof tokenize> | undefined {
+  const filePath = file.newPath || file.oldPath
+  const language = detectLanguage(filePath)
+  if (!language) return undefined
+  try {
+    return tokenize(file.hunks as HunkData[], {
+      highlight: true,
+      refractor,
+      language,
+      enhancers: [markEdits(file.hunks as HunkData[])]
+    })
+  } catch {
+    return undefined
+  }
 }
 
 function computeStats(files: FileData[]): DiffStats {
@@ -217,6 +301,16 @@ export function ReviewPanel({
   }, [diffText])
 
   const stats = useMemo(() => computeStats(files), [files])
+
+  const tokensByFile = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof tokenize>>()
+    for (const file of files) {
+      const filePath = file.newPath || file.oldPath
+      const tokens = tokenizeFile(file)
+      if (tokens) map.set(filePath, tokens)
+    }
+    return map
+  }, [files])
 
   const visibleFilePaths = useMemo(() => new Set(files.map((f) => f.newPath || f.oldPath)), [files])
 
@@ -499,6 +593,7 @@ export function ReviewPanel({
                         viewType="unified"
                         diffType={file.type as DiffType}
                         hunks={file.hunks as HunkData[]}
+                        tokens={tokensByFile.get(filePath)}
                         widgets={widgets}
                         gutterEvents={{
                           onClick: ({ change }) => {

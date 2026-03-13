@@ -78,7 +78,6 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): R
   const [editValue, setEditValue] = useState(task.description)
   const [isAddingChild, setIsAddingChild] = useState(false)
   const [childDescription, setChildDescription] = useState('')
-  const [isHovered, setIsHovered] = useState(false)
   const [showDoneConfirm, setShowDoneConfirm] = useState(false)
 
   const children = getChildren(task.id)
@@ -141,8 +140,6 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): R
           )}
           style={{ paddingLeft: `${depth * 16 + 4}px` }}
           onClick={() => selectTask(task.id)}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
           data-testid={`task-item-${task.id}`}
           data-task-description={task.description}
           data-task-state={sessionActive ? 'in-progress' : task.state}
@@ -222,8 +219,8 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): R
           )}
 
           {/* Hover action buttons */}
-          {isHovered && !isEditing && (
-            <div className="flex items-center shrink-0 mt-px">
+          {!isEditing && (
+            <div className="flex items-center shrink-0 mt-px opacity-0 group-hover:opacity-100 transition-opacity duration-150">
               <ActionButton
                 onClick={(e) => {
                   e.stopPropagation()

@@ -259,3 +259,87 @@ body {
   border-top-color: oklch(0.65 0.18 264 / 15%);
   border-bottom-color: oklch(0.65 0.18 264 / 15%);
 }
+
+/* Syntax highlighting – light mode */
+.diff-wrapper .token.comment,
+.diff-wrapper .token.prolog,
+.diff-wrapper .token.doctype,
+.diff-wrapper .token.cdata {
+  color: oklch(0.55 0 0);
+  font-style: italic;
+}
+.diff-wrapper .token.keyword,
+.diff-wrapper .token.operator,
+.diff-wrapper .token.builtin {
+  color: oklch(0.45 0.18 300);
+}
+.diff-wrapper .token.string,
+.diff-wrapper .token.attr-value {
+  color: oklch(0.48 0.14 145);
+}
+.diff-wrapper .token.number,
+.diff-wrapper .token.boolean {
+  color: oklch(0.52 0.16 50);
+}
+.diff-wrapper .token.function {
+  color: oklch(0.48 0.16 264);
+}
+.diff-wrapper .token.class-name,
+.diff-wrapper .token.tag {
+  color: oklch(0.5 0.16 30);
+}
+.diff-wrapper .token.attr-name {
+  color: oklch(0.52 0.14 70);
+}
+.diff-wrapper .token.punctuation {
+  color: oklch(0.5 0 0);
+}
+.diff-wrapper .token.property {
+  color: oklch(0.5 0.14 30);
+}
+.diff-wrapper .token.regex,
+.diff-wrapper .token.important {
+  color: oklch(0.55 0.16 50);
+}
+
+/* Syntax highlighting – dark mode */
+.dark .diff-wrapper .token.comment,
+.dark .diff-wrapper .token.prolog,
+.dark .diff-wrapper .token.doctype,
+.dark .diff-wrapper .token.cdata {
+  color: oklch(0.55 0 0);
+  font-style: italic;
+}
+.dark .diff-wrapper .token.keyword,
+.dark .diff-wrapper .token.operator,
+.dark .diff-wrapper .token.builtin {
+  color: oklch(0.75 0.14 300);
+}
+.dark .diff-wrapper .token.string,
+.dark .diff-wrapper .token.attr-value {
+  color: oklch(0.72 0.12 145);
+}
+.dark .diff-wrapper .token.number,
+.dark .diff-wrapper .token.boolean {
+  color: oklch(0.76 0.13 70);
+}
+.dark .diff-wrapper .token.function {
+  color: oklch(0.76 0.14 264);
+}
+.dark .diff-wrapper .token.class-name,
+.dark .diff-wrapper .token.tag {
+  color: oklch(0.74 0.14 30);
+}
+.dark .diff-wrapper .token.attr-name {
+  color: oklch(0.72 0.12 70);
+}
+.dark .diff-wrapper .token.punctuation {
+  color: oklch(0.6 0 0);
+}
+.dark .diff-wrapper .token.property {
+  color: oklch(0.74 0.12 30);
+}
+.dark .diff-wrapper .token.regex,
+.dark .diff-wrapper .token.important {
+  color: oklch(0.74 0.14 50);
+}

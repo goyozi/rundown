@@ -151,6 +151,7 @@ export function TaskItem({
   return (
     <div
       ref={setNodeRef}
+      data-task-id={task.id}
       className={cn('w-full task-item-enter relative', isDragging && 'opacity-20')}
     >
       {/* Drop indicator — before */}

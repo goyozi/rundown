@@ -15,6 +15,7 @@ import {
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useTaskStore, type Task } from '@/store/task-store'
 import { TaskItem } from './TaskItem'
+import { useTaskKeyboardNav } from '@/hooks/use-task-keyboard-nav'
 import { Circle, CheckCircle2, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -32,6 +33,8 @@ export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
   const [dropIntent, setDropIntent] = useState<DropIntent | null>(null)
   const dropIntentRef = useRef<DropIntent | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const treeContainerRef = useRef<HTMLDivElement>(null)
+  useTaskKeyboardNav(treeContainerRef)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -216,32 +219,37 @@ export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
   }, [updateDropIntent])
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
-    >
-      <SortableContext items={allIds} strategy={verticalListSortingStrategy}>
-        {tasks.map((task) => (
-          <TaskItem
-            key={task.id}
-            task={task}
-            dropIntent={dropIntent}
-            activeDragId={activeId ? String(activeId) : null}
-          />
-        ))}
-      </SortableContext>
+    <div ref={treeContainerRef}>
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <SortableContext items={allIds} strategy={verticalListSortingStrategy}>
+          {tasks.map((task) => (
+            <TaskItem
+              key={task.id}
+              task={task}
+              dropIntent={dropIntent}
+              activeDragId={activeId ? String(activeId) : null}
+            />
+          ))}
+        </SortableContext>
 
-      {activeId !== null && <EndDropZone isOver={dropIntent?.targetId === END_DROP_ID} />}
+        {activeId !== null && <EndDropZone isOver={dropIntent?.targetId === END_DROP_ID} />}
 
-      <DragOverlay dropAnimation={null}>
-        {activeTask ? (
-          <DragOverlayContent task={activeTask} sessionActive={activeSessions.has(activeTask.id)} />
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+        <DragOverlay dropAnimation={null}>
+          {activeTask ? (
+            <DragOverlayContent
+              task={activeTask}
+              sessionActive={activeSessions.has(activeTask.id)}
+            />
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    </div>
   )
 }
 

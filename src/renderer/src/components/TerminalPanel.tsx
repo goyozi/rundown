@@ -103,6 +103,7 @@ export function TerminalPanel({ taskId }: TerminalPanelProps): React.JSX.Element
       try {
         fitAddon.fit()
         window.api.ptyResize(taskId, term.cols, term.rows)
+        term.focus()
       } catch {
         // ignore
       }

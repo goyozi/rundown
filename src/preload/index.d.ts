@@ -1,9 +1,13 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import type { Task } from '../shared/types'
+import type { Task, TaskGroup } from '../shared/types'
 
 interface RundownAPI {
   getTasks(): Promise<Task[]>
   saveTasks(tasks: Task[]): Promise<void>
+  getGroups(): Promise<TaskGroup[]>
+  saveGroups(groups: TaskGroup[]): Promise<void>
+  getActiveGroupId(): Promise<string>
+  saveActiveGroupId(id: string): Promise<void>
   getSidebarWidth(): Promise<number>
   saveSidebarWidth(width: number): Promise<void>
   openDirectory(): Promise<string | undefined>

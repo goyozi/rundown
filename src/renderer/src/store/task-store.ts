@@ -1,16 +1,19 @@
 import { create } from 'zustand'
-import type { Task } from '../../../shared/types'
+import type { Task, TaskGroup } from '../../../shared/types'
 
-export type { Task }
+export type { Task, TaskGroup }
 
 interface TaskStore {
   tasks: Task[]
+  groups: TaskGroup[]
+  activeGroupId: string
   selectedTaskId: string | null
   loaded: boolean
   activeSessions: Set<string>
 
   loadTasks: () => Promise<void>
   persist: () => Promise<void>
+  persistGroups: () => Promise<void>
 
   addTask: (description: string, parentId?: string) => void
   updateDescription: (id: string, description: string) => void
@@ -29,21 +32,39 @@ interface TaskStore {
   getChildren: (parentId: string) => Task[]
   getDepth: (id: string) => number
   getEffectiveDirectory: (id: string) => string | undefined
+
+  // Group actions
+  addGroup: (name: string) => void
+  removeGroup: (id: string) => void
+  renameGroup: (id: string, name: string) => void
+  setActiveGroup: (id: string) => void
+  getActiveGroup: () => TaskGroup | undefined
+  getGroupTaskCount: (groupId: string) => number
 }
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
+  groups: [],
+  activeGroupId: '',
   selectedTaskId: null,
   loaded: false,
   activeSessions: new Set(),
 
   loadTasks: async () => {
-    const tasks = await window.api.getTasks()
-    set({ tasks, loaded: true })
+    const [tasks, groups, activeGroupId] = await Promise.all([
+      window.api.getTasks(),
+      window.api.getGroups(),
+      window.api.getActiveGroupId()
+    ])
+    set({ tasks, groups, activeGroupId, loaded: true })
   },
 
   persist: async () => {
     await window.api.saveTasks(get().tasks)
+  },
+
+  persistGroups: async () => {
+    await window.api.saveGroups(get().groups)
   },
 
   addTask: (description, parentId) => {
@@ -52,8 +73,13 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
     if (parentId) {
       const depth = get().getDepth(parentId)
-      if (depth >= 4) return // parent is at depth 4, child would be 5 (0-indexed: max depth index 4 = level 5)
+      if (depth >= 4) return
     }
+
+    // Sub-tasks inherit groupId from parent; root tasks use activeGroupId
+    const groupId = parentId
+      ? (get().tasks.find((t) => t.id === parentId)?.groupId ?? get().activeGroupId)
+      : get().activeGroupId
 
     const newTask: Task = {
       id,
@@ -61,7 +87,8 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       state: 'idle',
       parentId,
       children: [],
-      createdAt: now
+      createdAt: now,
+      groupId
     }
 
     set((state) => {
@@ -158,7 +185,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   getTask: (id) => get().tasks.find((t) => t.id === id),
 
-  getRootTasks: () => get().tasks.filter((t) => !t.parentId),
+  getRootTasks: () => get().tasks.filter((t) => !t.parentId && t.groupId === get().activeGroupId),
 
   getChildren: (parentId) => {
     const parent = get().tasks.find((t) => t.id === parentId)
@@ -186,5 +213,78 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       current = get().tasks.find((t) => t.id === current!.parentId)
     }
     return undefined
+  },
+
+  // Group actions
+
+  addGroup: (name) => {
+    const id = crypto.randomUUID()
+    const newGroup: TaskGroup = {
+      id,
+      name,
+      createdAt: new Date().toISOString()
+    }
+    set((state) => ({
+      groups: [...state.groups, newGroup],
+      activeGroupId: id
+    }))
+    get().persistGroups()
+    window.api.saveActiveGroupId(id)
+  },
+
+  removeGroup: (id) => {
+    const { groups, tasks, activeSessions, activeGroupId } = get()
+    if (groups.length <= 1) return // cannot delete last group
+
+    // Collect all task IDs in this group
+    const groupTaskIds = tasks.filter((t) => t.groupId === id).map((t) => t.id)
+
+    // Kill active sessions on those tasks
+    for (const taskId of groupTaskIds) {
+      if (activeSessions.has(taskId)) {
+        window.api.ptyKill(taskId)
+      }
+    }
+
+    const remainingGroups = groups.filter((g) => g.id !== id)
+    const newActiveGroupId = activeGroupId === id ? remainingGroups[0].id : activeGroupId
+
+    set((state) => ({
+      groups: remainingGroups,
+      tasks: state.tasks.filter((t) => t.groupId !== id),
+      activeGroupId: newActiveGroupId,
+      activeSessions: new Set(
+        [...state.activeSessions].filter((sid) => !groupTaskIds.includes(sid))
+      ),
+      selectedTaskId:
+        state.selectedTaskId && groupTaskIds.includes(state.selectedTaskId)
+          ? null
+          : state.selectedTaskId
+    }))
+
+    get().persist()
+    get().persistGroups()
+    window.api.saveActiveGroupId(newActiveGroupId)
+  },
+
+  renameGroup: (id, name) => {
+    set((state) => ({
+      groups: state.groups.map((g) => (g.id === id ? { ...g, name } : g))
+    }))
+    get().persistGroups()
+  },
+
+  setActiveGroup: (id) => {
+    set({ activeGroupId: id, selectedTaskId: null })
+    window.api.saveActiveGroupId(id)
+  },
+
+  getActiveGroup: () => {
+    const { groups, activeGroupId } = get()
+    return groups.find((g) => g.id === activeGroupId)
+  },
+
+  getGroupTaskCount: (groupId) => {
+    return get().tasks.filter((t) => t.groupId === groupId && !t.parentId).length
   }
 }))

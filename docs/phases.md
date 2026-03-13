@@ -86,12 +86,47 @@ Goal: Complete the core review → feedback loop.
 
 ---
 
-## Phase 6 — Polish & Stretch Goals
+## Phase 6 — Task Groups (Testable: multiple named task lists)
 
-Goal: Sharpen the UX and add nice-to-haves.
+Goal: Let the user organize tasks into named groups instead of a single flat list.
 
-- Keyboard shortcuts: start session, switch terminal/review, submit feedback (Req. 18)
-- Markdown rendering in comment bodies (Req. 17)
-- Auto-refresh diff after Claude writes to stdout (detect idle / debounce)
-- Visual indicators for sessions active in sub-tasks (badge on parent)
-- General UX cleanup: loading states, error boundaries, empty states
+### Data model
+
+- New `TaskGroup` entity:
+  ```ts
+  interface TaskGroup {
+    id: string // UUID
+    name: string // user-chosen display name
+    createdAt: string // ISO timestamp
+  }
+  ```
+- Each `Task` gains a `groupId: string` field linking it to a group.
+- Persistence: electron-store holds `{ groups: TaskGroup[], tasks: Task[] }`. On first launch (no existing data), create a default group named "Rundown".
+- No migration needed for existing data.
+
+### IPC / Store changes
+
+- `store:get-groups`, `store:save-groups` IPC channels (or fold into existing `store:get-tasks` / `store:save-tasks` if simpler).
+- Zustand store gains `groups`, `activeGroupId`, and actions: `addGroup`, `removeGroup`, `renameGroup`, `setActiveGroup`.
+- Task CRUD actions scope to `activeGroupId` — creating a task assigns it to the active group; the task list filters by active group.
+
+### UI
+
+- The sidebar header (currently the icon + "Rundown" label) becomes a clickable **group selector**:
+  - Displays the active group's name in place of "Rundown".
+  - Clicking opens a dropdown/popover anchored to the header.
+- **Group selector dropdown**:
+  - Lists all existing groups. Clicking a group switches to it (sets `activeGroupId`).
+  - Each group row shows a small **delete button** on hover (right side). Deleting a group that has tasks prompts a confirmation dialog. Deleting the last remaining group is not allowed (button disabled or hidden).
+  - A **"New Group"** button at the bottom of the list. Clicking it adds an inline text input (or a new row in edit mode) where the user types a name and presses Enter to create the group. The app switches to the newly created group automatically.
+- The task count at the bottom of the sidebar reflects only the active group's tasks.
+- The "Add a task…" input creates tasks in the active group.
+
+### Behavior details
+
+- Active group selection persists across restarts (stored in electron-store).
+- Removing a group removes all its tasks (and their sub-tasks). Active sessions on those tasks are killed first (with a confirmation dialog if any are running).
+- Groups cannot be reordered in this phase (alphabetical or creation-order is fine).
+- Group names must be non-empty; duplicates are allowed.
+
+**Exit criteria:** You can create multiple task groups, switch between them, see only that group's tasks, add new groups, and remove groups. The active group survives a restart.

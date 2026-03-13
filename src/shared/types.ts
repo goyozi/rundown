@@ -6,4 +6,11 @@ export interface Task {
   parentId?: string
   children: string[]
   createdAt: string
+  groupId: string
+}
+
+export interface TaskGroup {
+  id: string
+  name: string
+  createdAt: string
 }

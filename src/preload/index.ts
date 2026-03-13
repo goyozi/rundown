@@ -4,6 +4,10 @@ import { electronAPI } from '@electron-toolkit/preload'
 const api = {
   getTasks: () => ipcRenderer.invoke('store:get-tasks'),
   saveTasks: (tasks: unknown[]) => ipcRenderer.invoke('store:save-tasks', tasks),
+  getGroups: () => ipcRenderer.invoke('store:get-groups'),
+  saveGroups: (groups: unknown[]) => ipcRenderer.invoke('store:save-groups', groups),
+  getActiveGroupId: () => ipcRenderer.invoke('store:get-active-group-id'),
+  saveActiveGroupId: (id: string) => ipcRenderer.invoke('store:save-active-group-id', id),
   getSidebarWidth: () => ipcRenderer.invoke('store:get-sidebar-width'),
   saveSidebarWidth: (width: number) => ipcRenderer.invoke('store:save-sidebar-width', width),
   openDirectory: () => ipcRenderer.invoke('dialog:open-directory'),

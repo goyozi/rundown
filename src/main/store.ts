@@ -2,7 +2,7 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import Store from 'electron-store'
 import simpleGit from 'simple-git'
 import { existsSync } from 'fs'
-import type { Task } from '../shared/types'
+import type { Task, TaskGroup } from '../shared/types'
 
 interface WindowState {
   x?: number
@@ -14,13 +14,19 @@ interface WindowState {
 
 interface StoreSchema {
   tasks: Task[]
+  groups: TaskGroup[]
+  activeGroupId: string
   windowState: WindowState
   sidebarWidth: number
 }
 
+const DEFAULT_GROUP_ID = '00000000-0000-0000-0000-000000000000'
+
 const storeOptions: ConstructorParameters<typeof Store<StoreSchema>>[0] = {
   defaults: {
     tasks: [],
+    groups: [{ id: DEFAULT_GROUP_ID, name: 'Rundown', createdAt: new Date().toISOString() }],
+    activeGroupId: DEFAULT_GROUP_ID,
     windowState: {
       width: 900,
       height: 670,
@@ -35,6 +41,35 @@ if (process.env.ELECTRON_STORE_PATH) {
 }
 
 const store = new Store<StoreSchema>(storeOptions)
+
+// Migrate existing data: if groups are empty but tasks exist, create default group and assign tasks
+function migrateIfNeeded(): void {
+  const groups = store.get('groups')
+  const tasks = store.get('tasks')
+
+  if ((!groups || groups.length === 0) && tasks.length > 0) {
+    const defaultGroup: TaskGroup = {
+      id: DEFAULT_GROUP_ID,
+      name: 'Rundown',
+      createdAt: new Date().toISOString()
+    }
+    store.set('groups', [defaultGroup])
+    store.set('activeGroupId', DEFAULT_GROUP_ID)
+    store.set(
+      'tasks',
+      tasks.map((t) => ({ ...t, groupId: DEFAULT_GROUP_ID }))
+    )
+  } else if (groups && groups.length > 0 && tasks.some((t) => !t.groupId)) {
+    // Some tasks missing groupId — assign to first group
+    const firstGroupId = groups[0].id
+    store.set(
+      'tasks',
+      tasks.map((t) => (t.groupId ? t : { ...t, groupId: firstGroupId }))
+    )
+  }
+}
+
+migrateIfNeeded()
 
 export function getWindowState(): WindowState {
   return store.get('windowState')
@@ -51,6 +86,22 @@ export function registerStoreHandlers(): void {
 
   ipcMain.handle('store:save-tasks', (_event, tasks: Task[]) => {
     store.set('tasks', tasks)
+  })
+
+  ipcMain.handle('store:get-groups', () => {
+    return store.get('groups')
+  })
+
+  ipcMain.handle('store:save-groups', (_event, groups: TaskGroup[]) => {
+    store.set('groups', groups)
+  })
+
+  ipcMain.handle('store:get-active-group-id', () => {
+    return store.get('activeGroupId')
+  })
+
+  ipcMain.handle('store:save-active-group-id', (_event, id: string) => {
+    store.set('activeGroupId', id)
   })
 
   ipcMain.handle('store:get-sidebar-width', () => {

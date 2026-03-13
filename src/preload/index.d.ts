@@ -10,6 +10,8 @@ interface RundownAPI {
   saveActiveGroupId(id: string): Promise<void>
   getSidebarWidth(): Promise<number>
   saveSidebarWidth(width: number): Promise<void>
+  getRootTaskOrder(): Promise<Record<string, string[]>>
+  saveRootTaskOrder(order: Record<string, string[]>): Promise<void>
   openDirectory(): Promise<string | undefined>
   validateRepo(dirPath: string): Promise<{ valid: boolean; error?: string }>
   detectBranch(

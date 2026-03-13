@@ -10,6 +10,9 @@ const api = {
   saveActiveGroupId: (id: string) => ipcRenderer.invoke('store:save-active-group-id', id),
   getSidebarWidth: () => ipcRenderer.invoke('store:get-sidebar-width'),
   saveSidebarWidth: (width: number) => ipcRenderer.invoke('store:save-sidebar-width', width),
+  getRootTaskOrder: () => ipcRenderer.invoke('store:get-root-task-order'),
+  saveRootTaskOrder: (order: Record<string, string[]>) =>
+    ipcRenderer.invoke('store:save-root-task-order', order),
   openDirectory: () => ipcRenderer.invoke('dialog:open-directory'),
   validateRepo: (dirPath: string) => ipcRenderer.invoke('git:validate-repo', dirPath),
   detectBranch: (dirPath: string) => ipcRenderer.invoke('git:detect-branch', dirPath),

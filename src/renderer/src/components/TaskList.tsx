@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { useTaskStore } from '@/store/task-store'
 import { useTheme } from '@/hooks/use-theme'
-import { TaskItem } from './TaskItem'
+import { DndTaskTree } from './DndTaskTree'
 
 const themeIcon = { light: Sun, dark: Moon, system: Monitor } as const
 const themeLabel = { light: 'Light', dark: 'Dark', system: 'System' } as const
@@ -274,7 +274,7 @@ export function TaskList(): React.JSX.Element {
               </p>
             </div>
           ) : (
-            rootTasks.map((task) => <TaskItem key={task.id} task={task} />)
+            <DndTaskTree tasks={rootTasks} />
           )}
         </div>
       </ScrollArea>

@@ -10,6 +10,7 @@ import {
   Circle,
   Loader2
 } from 'lucide-react'
+import { useSortable } from '@dnd-kit/sortable'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -24,6 +25,7 @@ import {
 } from '@/components/ui/dialog'
 import { useTaskStore, type Task } from '@/store/task-store'
 import { cn } from '@/lib/utils'
+import type { DropIntent } from './DndTaskTree'
 
 function ActionButton({
   onClick,
@@ -58,7 +60,17 @@ function ActionButton({
   )
 }
 
-export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): React.ReactElement {
+export function TaskItem({
+  task,
+  depth = 0,
+  dropIntent,
+  activeDragId
+}: {
+  task: Task
+  depth?: number
+  dropIntent?: DropIntent | null
+  activeDragId?: string | null
+}): React.ReactElement {
   const {
     selectedTaskId,
     selectTask,
@@ -73,6 +85,10 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): R
     stopSession
   } = useTaskStore()
 
+  const { attributes, listeners, setNodeRef, isDragging } = useSortable({
+    id: task.id
+  })
+
   const [isOpen, setIsOpen] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(task.description)
@@ -86,6 +102,10 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): R
   const isSelected = selectedTaskId === task.id
   const isDone = task.state === 'done'
   const sessionActive = activeSessions.has(task.id)
+
+  // Drop intent for this specific task
+  const isDropTarget = dropIntent?.targetId === task.id
+  const dropPosition = isDropTarget ? dropIntent.position : null
 
   const handleSaveEdit = (): void => {
     const trimmed = editValue.trim()
@@ -129,20 +149,33 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): R
   }
 
   return (
-    <div className="w-full task-item-enter">
+    <div
+      ref={setNodeRef}
+      className={cn('w-full task-item-enter relative', isDragging && 'opacity-20')}
+    >
+      {/* Drop indicator — before */}
+      {dropPosition === 'before' && (
+        <div
+          className="drop-line absolute top-0 left-2 right-2 z-10 transition-all duration-150 ease-out"
+          style={{ marginLeft: `${depth * 16}px` }}
+        />
+      )}
+
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div
           className={cn(
-            'group flex items-start gap-1 rounded-lg px-2 py-1.5 cursor-pointer transition-all duration-150',
+            'group flex items-start gap-1 rounded-lg px-2 py-1.5 cursor-pointer transition-all duration-150 touch-none',
             isSelected
               ? 'bg-accent shadow-[0_0_0_1px_var(--color-primary)/12%] text-accent-foreground'
-              : 'hover:bg-muted/60'
+              : 'hover:bg-muted/60',
+            dropPosition === 'inside' && 'drop-nest-target bg-primary/10 rounded-md'
           )}
           style={{ paddingLeft: `${depth * 16 + 4}px` }}
           onClick={() => selectTask(task.id)}
           data-testid={`task-item-${task.id}`}
           data-task-description={task.description}
           data-task-state={sessionActive ? 'in-progress' : task.state}
+          {...(isEditing ? {} : { ...attributes, ...listeners })}
         >
           {/* Expand/collapse chevron */}
           {hasChildren ? (
@@ -301,11 +334,25 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }): R
         {hasChildren && (
           <CollapsibleContent>
             {children.map((child) => (
-              <TaskItem key={child.id} task={child} depth={depth + 1} />
+              <TaskItem
+                key={child.id}
+                task={child}
+                depth={depth + 1}
+                dropIntent={dropIntent}
+                activeDragId={activeDragId}
+              />
             ))}
           </CollapsibleContent>
         )}
       </Collapsible>
+
+      {/* Drop indicator — after */}
+      {dropPosition === 'after' && (
+        <div
+          className="drop-line absolute bottom-0 left-2 right-2 z-10 transition-all duration-150 ease-out"
+          style={{ marginLeft: `${depth * 16}px` }}
+        />
+      )}
 
       {/* Confirmation dialog for marking done with active session */}
       <Dialog open={showDoneConfirm} onOpenChange={setShowDoneConfirm}>

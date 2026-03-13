@@ -1,0 +1,286 @@
+import React, { useState, useCallback, useRef } from 'react'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+  type DragStartEvent,
+  type DragOverEvent,
+  type DragEndEvent,
+  type UniqueIdentifier
+} from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useTaskStore, type Task } from '@/store/task-store'
+import { TaskItem } from './TaskItem'
+import { Circle, CheckCircle2, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+const END_DROP_ID = '__END__'
+
+export interface DropIntent {
+  targetId: string
+  position: 'before' | 'after' | 'inside'
+}
+
+export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
+  const { getChildren, moveTask, getDepth, isDescendant, getMaxSubtreeDepth, activeSessions } =
+    useTaskStore()
+  const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
+  const [dropIntent, setDropIntent] = useState<DropIntent | null>(null)
+  const dropIntentRef = useRef<DropIntent | null>(null)
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  )
+
+  // Collect all task IDs recursively for SortableContext
+  function collectAllIds(taskList: Task[]): string[] {
+    const ids: string[] = []
+    for (const task of taskList) {
+      ids.push(task.id)
+      const children = getChildren(task.id)
+      if (children.length > 0) {
+        ids.push(...collectAllIds(children))
+      }
+    }
+    return ids
+  }
+
+  const allIds = collectAllIds(tasks)
+
+  const findTaskById = useCallback(
+    (id: string): Task | undefined => {
+      const search = (list: Task[]): Task | undefined => {
+        for (const t of list) {
+          if (t.id === id) return t
+          const children = getChildren(t.id)
+          const found = search(children)
+          if (found) return found
+        }
+        return undefined
+      }
+      return search(tasks)
+    },
+    [tasks, getChildren]
+  )
+
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const task = findTaskById(String(event.active.id))
+      setActiveId(event.active.id)
+      setActiveTask(task ?? null)
+    },
+    [findTaskById]
+  )
+
+  const computePosition = useCallback(
+    (
+      event: DragOverEvent | DragEndEvent,
+      overId: string,
+      activeIdStr: string
+    ): 'before' | 'after' | 'inside' | null => {
+      if (isDescendant(activeIdStr, overId)) return null
+
+      const overRect = event.over?.rect
+      if (!overRect) return null
+
+      const pointerY = (event.activatorEvent as PointerEvent).clientY + (event.delta?.y ?? 0)
+      const relativeY = pointerY - overRect.top
+      const ratio = relativeY / overRect.height
+
+      // Position-based nesting: if cursor is to the right of the target's content area, nest.
+      // This is direction-agnostic — works the same whether dragging up or down.
+      const pointerX = (event.activatorEvent as PointerEvent).clientX + (event.delta?.x ?? 0)
+      const targetDepthPx = overRect.left + getDepth(overId) * 16 + 24
+      const NEST_THRESHOLD = 30 // px past target's content start to trigger nesting
+
+      let position: 'before' | 'after' | 'inside'
+
+      if (pointerX > targetDepthPx + NEST_THRESHOLD) {
+        // Cursor is well to the right of the target → nest inside
+        if (ratio < 0.1) {
+          position = 'before'
+        } else if (ratio > 0.9) {
+          position = 'after'
+        } else {
+          position = 'inside'
+        }
+      } else {
+        // Cursor is at or left of the target's content → reorder only
+        position = ratio < 0.5 ? 'before' : 'after'
+      }
+
+      // Validate 'inside' — check depth constraint
+      if (position === 'inside') {
+        const targetDepth = getDepth(overId) + 1
+        const subtreeDepth = getMaxSubtreeDepth(activeIdStr)
+        if (targetDepth + subtreeDepth > 4) {
+          position = ratio < 0.5 ? 'before' : 'after'
+        }
+      }
+
+      return position
+    },
+    [isDescendant, getDepth, getMaxSubtreeDepth]
+  )
+
+  const updateDropIntent = useCallback((intent: DropIntent | null) => {
+    setDropIntent(intent)
+    dropIntentRef.current = intent
+  }, [])
+
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const { over, active } = event
+      if (!over || over.id === active.id) {
+        updateDropIntent(null)
+        return
+      }
+
+      if (String(over.id) === END_DROP_ID) {
+        updateDropIntent({ targetId: END_DROP_ID, position: 'after' })
+        return
+      }
+
+      const overId = String(over.id)
+      const activeIdStr = String(active.id)
+      const position = computePosition(event, overId, activeIdStr)
+
+      if (!position) {
+        updateDropIntent(null)
+        return
+      }
+
+      updateDropIntent({ targetId: overId, position })
+    },
+    [computePosition, updateDropIntent]
+  )
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active } = event
+      // Capture the previewed intent before clearing state
+      const intent = dropIntentRef.current
+
+      setActiveId(null)
+      updateDropIntent(null)
+      setActiveTask(null)
+
+      if (!intent) return
+
+      const activeIdStr = String(active.id)
+      const { targetId, position } = intent
+
+      // Handle end-of-list drop zone
+      if (targetId === END_DROP_ID) {
+        moveTask(activeIdStr, undefined, tasks.length)
+        return
+      }
+
+      // Find the target task to determine its parent
+      const findTaskParent = (id: string, list: Task[], parentId?: string): string | undefined => {
+        for (const t of list) {
+          if (t.id === id) return parentId
+          const children = getChildren(t.id)
+          const found = findTaskParent(id, children, t.id)
+          if (found !== undefined) return found
+        }
+        return undefined
+      }
+
+      if (position === 'inside') {
+        moveTask(activeIdStr, targetId, 0)
+      } else {
+        const overParentId = findTaskParent(targetId, tasks)
+        const siblings = overParentId
+          ? getChildren(overParentId).map((t) => t.id)
+          : tasks.map((t) => t.id)
+
+        const targetIndex = siblings.indexOf(targetId)
+        const insertIndex = position === 'before' ? targetIndex : targetIndex + 1
+        moveTask(activeIdStr, overParentId, insertIndex)
+      }
+    },
+    [moveTask, tasks, getChildren, updateDropIntent]
+  )
+
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null)
+    updateDropIntent(null)
+    setActiveTask(null)
+  }, [updateDropIntent])
+
+  return (
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <SortableContext items={allIds} strategy={verticalListSortingStrategy}>
+        {tasks.map((task) => (
+          <TaskItem
+            key={task.id}
+            task={task}
+            dropIntent={dropIntent}
+            activeDragId={activeId ? String(activeId) : null}
+          />
+        ))}
+      </SortableContext>
+
+      {activeId !== null && <EndDropZone isOver={dropIntent?.targetId === END_DROP_ID} />}
+
+      <DragOverlay dropAnimation={null}>
+        {activeTask ? (
+          <DragOverlayContent task={activeTask} sessionActive={activeSessions.has(activeTask.id)} />
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  )
+}
+
+function EndDropZone({ isOver }: { isOver: boolean }): React.ReactElement {
+  const { setNodeRef } = useDroppable({ id: END_DROP_ID })
+
+  return (
+    <div ref={setNodeRef} className="relative h-8">
+      {isOver && <div className="drop-line absolute top-0 left-2 right-2" />}
+    </div>
+  )
+}
+
+function DragOverlayContent({
+  task,
+  sessionActive
+}: {
+  task: Task
+  sessionActive: boolean
+}): React.ReactElement {
+  const isDone = task.state === 'done'
+
+  return (
+    <div className="drag-overlay flex items-center gap-1.5 rounded-md bg-card border border-primary/20 shadow-xl shadow-black/20 px-3 py-1.5 opacity-90 scale-[1.02]">
+      <span
+        className={cn(
+          'shrink-0',
+          isDone ? 'text-success' : sessionActive ? 'text-primary' : 'text-muted-foreground/40'
+        )}
+      >
+        {isDone ? (
+          <CheckCircle2 className="size-[15px]" />
+        ) : sessionActive ? (
+          <Loader2 className="size-[15px] animate-spin" />
+        ) : (
+          <Circle className="size-[15px]" />
+        )}
+      </span>
+      <span className="text-[13px] leading-snug truncate max-w-[250px]">{task.description}</span>
+    </div>
+  )
+}

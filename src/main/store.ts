@@ -18,6 +18,7 @@ interface StoreSchema {
   activeGroupId: string
   windowState: WindowState
   sidebarWidth: number
+  rootTaskOrder: Record<string, string[]>
 }
 
 const DEFAULT_GROUP_ID = '00000000-0000-0000-0000-000000000000'
@@ -32,7 +33,8 @@ const storeOptions: ConstructorParameters<typeof Store<StoreSchema>>[0] = {
       height: 670,
       isMaximized: false
     },
-    sidebarWidth: 320
+    sidebarWidth: 320,
+    rootTaskOrder: {}
   }
 }
 
@@ -70,6 +72,23 @@ function migrateIfNeeded(): void {
 }
 
 migrateIfNeeded()
+
+// Migrate: build rootTaskOrder from existing tasks if missing
+function migrateRootTaskOrder(): void {
+  const rootTaskOrder = store.get('rootTaskOrder')
+  const tasks = store.get('tasks')
+  const groups = store.get('groups')
+
+  if (Object.keys(rootTaskOrder).length === 0 && tasks.length > 0) {
+    const order: Record<string, string[]> = {}
+    for (const group of groups) {
+      order[group.id] = tasks.filter((t) => !t.parentId && t.groupId === group.id).map((t) => t.id)
+    }
+    store.set('rootTaskOrder', order)
+  }
+}
+
+migrateRootTaskOrder()
 
 export function getWindowState(): WindowState {
   return store.get('windowState')
@@ -110,6 +129,14 @@ export function registerStoreHandlers(): void {
 
   ipcMain.handle('store:save-sidebar-width', (_event, width: number) => {
     store.set('sidebarWidth', width)
+  })
+
+  ipcMain.handle('store:get-root-task-order', () => {
+    return store.get('rootTaskOrder')
+  })
+
+  ipcMain.handle('store:save-root-task-order', (_event, order: Record<string, string[]>) => {
+    store.set('rootTaskOrder', order)
   })
 
   ipcMain.handle('dialog:open-directory', async (event) => {

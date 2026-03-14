@@ -109,6 +109,20 @@ export function TerminalPanel({ taskId }: TerminalPanelProps): React.JSX.Element
       }
     })
 
+    // Intercept Shift+Enter to send proper CSI u escape sequence
+    // (xterm.js sends plain \r for both Enter and Shift+Enter by default).
+    // Must block all event types (keydown, keypress, keyup) — otherwise the
+    // keypress event slips through and xterm emits an extra \r that submits the input.
+    term.attachCustomKeyEventHandler((event) => {
+      if (event.key === 'Enter' && event.shiftKey) {
+        if (event.type === 'keydown') {
+          window.api.ptyWrite(taskId, '\x1b[13;2u')
+        }
+        return false
+      }
+      return true
+    })
+
     // Forward keystrokes to PTY
     term.onData((data) => {
       window.api.ptyWrite(taskId, data)

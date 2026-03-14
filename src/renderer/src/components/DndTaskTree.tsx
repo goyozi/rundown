@@ -3,7 +3,6 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
-  KeyboardSensor,
   useSensor,
   useSensors,
   useDroppable,
@@ -36,10 +35,7 @@ export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
   const treeContainerRef = useRef<HTMLDivElement>(null)
   useTaskKeyboardNav(treeContainerRef)
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor)
-  )
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   // Collect all task IDs recursively for SortableContext
   function collectAllIds(taskList: Task[]): string[] {

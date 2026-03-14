@@ -33,7 +33,8 @@ export function TaskList(): React.JSX.Element {
     setActiveGroup,
     getGroupTaskCount,
     activeSessions,
-    tasks
+    tasks,
+    selectTask
   } = useTaskStore()
   const [newTaskDescription, setNewTaskDescription] = useState('')
   const [groupSelectorOpen, setGroupSelectorOpen] = useState(false)
@@ -240,6 +241,13 @@ export function TaskList(): React.JSX.Element {
             onChange={(e) => setNewTaskDescription(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleAddTask()
+              if (e.key === 'Escape' || e.key === 'ArrowDown') {
+                e.preventDefault()
+                ;(e.target as HTMLElement).blur()
+                if (rootTasks.length > 0) {
+                  selectTask(rootTasks[0].id)
+                }
+              }
             }}
             className="h-8 text-sm bg-background/60 placeholder:text-muted-foreground/60"
             data-testid="new-task-input"

@@ -83,6 +83,59 @@ test('assign non-existent path shows error dialog', async () => {
   await expect(page.getByTestId('directory-error')).toContainText('Path does not exist')
 })
 
+test('set group directory via file picker', async () => {
+  ;({ app, page } = await launchApp())
+  const gitDir = createTempGitRepo()
+  tempDirs.push(gitDir)
+
+  await mockOpenDirectory(app, gitDir)
+  await page.getByTestId('group-directory-picker').click()
+
+  // Group directory should be displayed
+  await expect(page.getByTestId('group-directory-picker')).toContainText(gitDir)
+})
+
+test('task inherits group directory', async () => {
+  ;({ app, page } = await launchApp())
+  const gitDir = createTempGitRepo()
+  tempDirs.push(gitDir)
+
+  // Set group directory
+  await mockOpenDirectory(app, gitDir)
+  await page.getByTestId('group-directory-picker').click()
+  await expect(page.getByTestId('group-directory-picker')).toContainText(gitDir)
+
+  // Create a task and select it
+  await createTask(page, 'Group dir task')
+  await clickTask(page, 'Group dir task')
+
+  // Task should show inherited group directory
+  await expect(page.getByTestId('directory-display')).toHaveText(gitDir)
+  await expect(page.getByTestId('task-detail').getByText('inherited')).toBeVisible()
+})
+
+test('task own directory overrides group directory', async () => {
+  ;({ app, page } = await launchApp())
+  const groupDir = createTempGitRepo()
+  const taskDir = createTempGitRepo()
+  tempDirs.push(groupDir, taskDir)
+
+  // Set group directory
+  await mockOpenDirectory(app, groupDir)
+  await page.getByTestId('group-directory-picker').click()
+  await expect(page.getByTestId('group-directory-picker')).toContainText(groupDir)
+
+  // Create a task, select it, assign its own directory
+  await createTask(page, 'Own dir task')
+  await clickTask(page, 'Own dir task')
+  await mockOpenDirectory(app, taskDir)
+  await page.getByTestId('directory-display').click()
+
+  // Task should show its own directory, not the group one
+  await expect(page.getByTestId('directory-display')).toHaveText(taskDir)
+  await expect(page.getByTestId('task-detail').getByText('inherited')).not.toBeVisible()
+})
+
 test('sub-task inherits parent directory', async () => {
   ;({ app, page } = await launchApp())
   const gitDir = createTempGitRepo()

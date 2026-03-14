@@ -1,5 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
-import { Plus, ListTodo, Sun, Moon, Monitor, ChevronDown, Trash2, FolderPlus } from 'lucide-react'
+import {
+  Plus,
+  ListTodo,
+  Sun,
+  Moon,
+  Monitor,
+  ChevronDown,
+  Trash2,
+  FolderPlus,
+  FolderOpen
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -32,6 +42,7 @@ export function TaskList(): React.JSX.Element {
     removeGroup,
     setActiveGroup,
     getGroupTaskCount,
+    updateGroupDirectory,
     activeSessions,
     tasks,
     selectTask
@@ -41,6 +52,7 @@ export function TaskList(): React.JSX.Element {
   const [isCreatingGroup, setIsCreatingGroup] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [groupDirError, setGroupDirError] = useState<string | null>(null)
   const { mode, cycle } = useTheme()
   const newGroupInputRef = useRef<HTMLInputElement>(null)
 
@@ -87,6 +99,19 @@ export function TaskList(): React.JSX.Element {
     if (deleteConfirm) {
       removeGroup(deleteConfirm)
       setDeleteConfirm(null)
+    }
+  }
+
+  const handlePickGroupDirectory = async (): Promise<void> => {
+    const dir = await window.api.openDirectory()
+    if (dir) {
+      const result = await window.api.validateRepo(dir)
+      if (result.valid) {
+        setGroupDirError(null)
+        updateGroupDirectory(activeGroupId, dir)
+      } else {
+        setGroupDirError(result.error ?? 'Invalid directory')
+      }
     }
   }
 
@@ -230,6 +255,22 @@ export function TaskList(): React.JSX.Element {
         </div>
       </div>
 
+      {/* Group directory */}
+      <div className="px-4 pb-3 no-drag">
+        <button
+          className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground cursor-pointer transition-colors w-full truncate"
+          onClick={handlePickGroupDirectory}
+          data-testid="group-directory-picker"
+        >
+          <FolderOpen className="size-3 shrink-0" />
+          {activeGroup?.directory ? (
+            <span className="font-mono truncate">{activeGroup.directory}</span>
+          ) : (
+            <span>Set group directory...</span>
+          )}
+        </button>
+      </div>
+
       <Separator className="opacity-60" />
 
       {/* Add task input */}
@@ -327,6 +368,19 @@ export function TaskList(): React.JSX.Element {
             >
               Delete
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Group directory validation error dialog */}
+      <Dialog open={!!groupDirError} onOpenChange={(open) => !open && setGroupDirError(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invalid directory</DialogTitle>
+            <DialogDescription>{groupDirError}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setGroupDirError(null)}>OK</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -42,6 +42,7 @@ interface TaskStore {
   addGroup: (name: string) => void
   removeGroup: (id: string) => void
   renameGroup: (id: string, name: string) => void
+  updateGroupDirectory: (id: string, directory: string | undefined) => void
   setActiveGroup: (id: string) => void
   getActiveGroup: () => TaskGroup | undefined
   getGroupTaskCount: (groupId: string) => number
@@ -321,7 +322,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     let current = get().tasks.find((t) => t.id === id)
     while (current) {
       if (current.directory) return current.directory
-      if (!current.parentId) return undefined
+      if (!current.parentId) {
+        // Fall back to group directory for root tasks
+        const group = get().groups.find((g) => g.id === current!.groupId)
+        return group?.directory
+      }
       current = get().tasks.find((t) => t.id === current!.parentId)
     }
     return undefined
@@ -406,6 +411,13 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   renameGroup: (id, name) => {
     set((state) => ({
       groups: state.groups.map((g) => (g.id === id ? { ...g, name } : g))
+    }))
+    get().persistGroups()
+  },
+
+  updateGroupDirectory: (id, directory) => {
+    set((state) => ({
+      groups: state.groups.map((g) => (g.id === id ? { ...g, directory } : g))
     }))
     get().persistGroups()
   },

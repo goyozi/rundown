@@ -12,5 +12,6 @@ export interface Task {
 export interface TaskGroup {
   id: string
   name: string
+  directory?: string
   createdAt: string
 }

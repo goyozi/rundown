@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, nativeTheme } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import electronUpdater from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import { registerStoreHandlers, getWindowState, saveWindowState } from './store'
 import { registerPtyHandlers, killAllSessions } from './pty'
@@ -82,7 +83,7 @@ function createWindow(): void {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+  electronApp.setAppUserModelId('com.goyozi.rundown')
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -99,6 +100,11 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+
+  // Check for updates after window is created (production only)
+  if (!is.dev) {
+    electronUpdater.autoUpdater.checkForUpdatesAndNotify()
+  }
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

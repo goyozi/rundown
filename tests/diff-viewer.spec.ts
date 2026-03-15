@@ -10,7 +10,10 @@ import {
   createTempGitRepo,
   dirtyRepo,
   ensureMainBranch,
-  createFeatureBranch
+  createFeatureBranch,
+  deleteTrackedFile,
+  addUntrackedFile,
+  advanceMainBranch
 } from './fixtures/git-repo'
 
 let app: ElectronApplication
@@ -62,6 +65,30 @@ test.describe('uncommitted changes mode', () => {
     await goToReview(page)
     await expect(page.getByTestId('no-changes')).toBeVisible()
   })
+
+  test('deleted file shows real filename, not /dev/null', async () => {
+    ;({ app, page } = await launchApp())
+    await setupTaskWithRepo('Delete task', deleteTrackedFile)
+
+    await goToReview(page)
+
+    await expect(page.getByTestId('diff-files')).toBeVisible()
+    await expect(page.locator('[data-testid^="diff-file-"]')).toHaveCount(1)
+    // Should show the real file name, not /dev/null
+    await expect(page.locator('[data-testid="diff-file-index.ts"]')).toBeVisible()
+    await expect(page.locator('.diff-code-delete')).toBeVisible()
+  })
+
+  test('untracked files are included in the diff', async () => {
+    ;({ app, page } = await launchApp())
+    await setupTaskWithRepo('Untracked task', (dir) => addUntrackedFile(dir))
+
+    await goToReview(page)
+
+    await expect(page.getByTestId('diff-files')).toBeVisible()
+    await expect(page.locator('[data-testid="diff-file-untracked.ts"]')).toBeVisible()
+    await expect(page.locator('.diff-code-insert')).toBeVisible()
+  })
 })
 
 test.describe('branch vs main mode', () => {
@@ -74,6 +101,21 @@ test.describe('branch vs main mode', () => {
 
     await expect(page.locator('[data-testid^="diff-file-"]')).toHaveCount(1)
     await expect(page.locator('.diff-code-insert')).toBeVisible()
+  })
+
+  test('does not show files only changed on main after branch point', async () => {
+    ;({ app, page } = await launchApp())
+    await setupTaskWithRepo('Merge-base task', (dir) => {
+      createFeatureBranch(dir)
+      advanceMainBranch(dir)
+    })
+
+    await goToReview(page)
+    await switchToBranchMode(page)
+
+    // Should only show the feature branch file, not main-only.ts
+    await expect(page.locator('[data-testid^="diff-file-"]')).toHaveCount(1)
+    await expect(page.locator('[data-testid="diff-file-feature.ts"]')).toBeVisible()
   })
 
   test('auto-detects main vs master', async () => {

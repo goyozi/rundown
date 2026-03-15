@@ -103,8 +103,8 @@ function detectLanguage(filePath: string): string | undefined {
 }
 
 function tokenizeFile(file: FileData): ReturnType<typeof tokenize> | undefined {
-  const filePath = file.newPath || file.oldPath
-  const language = detectLanguage(filePath)
+  const path = resolveFilePath(file)
+  const language = detectLanguage(path)
   if (!language) return undefined
   try {
     return tokenize(file.hunks as HunkData[], {
@@ -116,6 +116,13 @@ function tokenizeFile(file: FileData): ReturnType<typeof tokenize> | undefined {
   } catch {
     return undefined
   }
+}
+
+/** Resolve the display path for a file, preferring the real path over /dev/null */
+function resolveFilePath(file: FileData): string {
+  const newP = file.newPath === '/dev/null' ? '' : file.newPath
+  const oldP = file.oldPath === '/dev/null' ? '' : file.oldPath
+  return newP || oldP
 }
 
 function computeStats(files: FileData[]): DiffStats {
@@ -305,14 +312,14 @@ export function ReviewPanel({
   const tokensByFile = useMemo(() => {
     const map = new Map<string, ReturnType<typeof tokenize>>()
     for (const file of files) {
-      const filePath = file.newPath || file.oldPath
+      const fp = resolveFilePath(file)
       const tokens = tokenizeFile(file)
-      if (tokens) map.set(filePath, tokens)
+      if (tokens) map.set(fp, tokens)
     }
     return map
   }, [files])
 
-  const visibleFilePaths = useMemo(() => new Set(files.map((f) => f.newPath || f.oldPath)), [files])
+  const visibleFilePaths = useMemo(() => new Set(files.map((f) => resolveFilePath(f))), [files])
 
   const hiddenCommentCount = useMemo(
     () => comments.filter((c) => !visibleFilePaths.has(c.filePath)).length,
@@ -530,7 +537,7 @@ export function ReviewPanel({
         <div className="flex-1 overflow-y-auto min-h-0">
           <div className="p-4 space-y-3" data-testid="diff-files">
             {files.map((file) => {
-              const filePath = file.newPath || file.oldPath
+              const filePath = resolveFilePath(file)
               const isCollapsed = collapsedFiles.has(filePath)
               const fStats = fileStats(file)
               const fileComments = comments.filter((c) => c.filePath === filePath)

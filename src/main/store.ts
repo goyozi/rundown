@@ -201,8 +201,23 @@ export function registerStoreHandlers(): void {
       try {
         const git = simpleGit(dirPath)
         // Show both staged and unstaged changes vs HEAD
-        const diff = await git.diff(['HEAD'])
-        return { diff }
+        const trackedDiff = await git.diff(['HEAD'])
+
+        // Include untracked files by staging them with --intent-to-add,
+        // running diff, then unstaging them
+        const statusResult = await git.status()
+        const untrackedFiles = statusResult.not_added
+        let untrackedDiff = ''
+        if (untrackedFiles.length > 0) {
+          await git.raw(['add', '--intent-to-add', '--', ...untrackedFiles])
+          try {
+            untrackedDiff = await git.diff(['--', ...untrackedFiles])
+          } finally {
+            await git.raw(['reset', '--', ...untrackedFiles])
+          }
+        }
+
+        return { diff: trackedDiff + untrackedDiff }
       } catch {
         return { diff: '', error: 'Failed to get uncommitted diff' }
       }
@@ -218,8 +233,10 @@ export function registerStoreHandlers(): void {
     ): Promise<{ diff: string; error?: string }> => {
       try {
         const git = simpleGit(dirPath)
-        // Show diff between main branch and current working tree (committed + uncommitted)
-        const diff = await git.diff([mainBranch])
+        // Use merge-base so only changes on the current branch are shown,
+        // not changes made on the main branch after the branch point
+        const mergeBase = (await git.raw(['merge-base', mainBranch, 'HEAD'])).trim()
+        const diff = await git.diff([mergeBase])
         return { diff }
       } catch {
         return { diff: '', error: 'Failed to get branch diff' }

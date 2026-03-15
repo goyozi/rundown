@@ -26,6 +26,8 @@ const api = {
   // PTY
   ptySpawn: (taskId: string, cwd: string, theme: 'light' | 'dark' = 'dark') =>
     ipcRenderer.invoke('pty:spawn', taskId, cwd, theme),
+  ptySpawnShell: (sessionId: string, cwd: string, theme: 'light' | 'dark' = 'dark') =>
+    ipcRenderer.invoke('pty:spawn-shell', sessionId, cwd, theme),
   ptyWrite: (taskId: string, data: string) => ipcRenderer.invoke('pty:write', taskId, data),
   ptyResize: (taskId: string, cols: number, rows: number) =>
     ipcRenderer.invoke('pty:resize', taskId, cols, rows),

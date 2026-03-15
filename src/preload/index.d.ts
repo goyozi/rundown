@@ -29,6 +29,11 @@ interface RundownAPI {
     cwd: string,
     theme?: 'light' | 'dark'
   ): Promise<{ success: boolean; error?: string }>
+  ptySpawnShell(
+    sessionId: string,
+    cwd: string,
+    theme?: 'light' | 'dark'
+  ): Promise<{ success: boolean; error?: string }>
   ptyWrite(taskId: string, data: string): Promise<void>
   ptyResize(taskId: string, cols: number, rows: number): Promise<void>
   ptyKill(taskId: string): Promise<void>

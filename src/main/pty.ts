@@ -62,6 +62,52 @@ export function registerPtyHandlers(getMainWindow: () => BrowserWindow | null): 
     }
   )
 
+  ipcMain.handle(
+    'pty:spawn-shell',
+    (_event, sessionId: string, cwd: string, theme: 'light' | 'dark' = 'dark') => {
+      if (sessions.has(sessionId)) {
+        return { success: false, error: 'Session already exists' }
+      }
+
+      const shell = process.env.SHELL_BIN ?? process.env.SHELL ?? '/bin/zsh'
+      const colorfgbg = theme === 'light' ? '0;15' : '15;0'
+
+      try {
+        const ptyProcess = pty.spawn(shell, [], {
+          name: 'xterm-256color',
+          cols: 80,
+          rows: 24,
+          cwd,
+          env: {
+            ...process.env,
+            COLORFGBG: colorfgbg
+          } as Record<string, string>
+        })
+
+        sessions.set(sessionId, ptyProcess)
+
+        ptyProcess.onData((data) => {
+          const win = getMainWindow()
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('pty:data', sessionId, data)
+          }
+        })
+
+        ptyProcess.onExit(() => {
+          sessions.delete(sessionId)
+          const win = getMainWindow()
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('pty:exit', sessionId)
+          }
+        })
+
+        return { success: true }
+      } catch (err) {
+        return { success: false, error: String(err) }
+      }
+    }
+  )
+
   ipcMain.handle('pty:write', (_event, taskId: string, data: string) => {
     const proc = sessions.get(taskId)
     if (proc) {

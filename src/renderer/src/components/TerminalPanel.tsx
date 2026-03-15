@@ -51,10 +51,10 @@ const lightTheme: ITheme = {
 }
 
 interface TerminalPanelProps {
-  taskId: string
+  sessionId: string
 }
 
-export function TerminalPanel({ taskId }: TerminalPanelProps): React.JSX.Element {
+export function TerminalPanel({ sessionId }: TerminalPanelProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -67,12 +67,12 @@ export function TerminalPanel({ taskId }: TerminalPanelProps): React.JSX.Element
     if (fit && term) {
       try {
         fit.fit()
-        window.api.ptyResize(taskId, term.cols, term.rows)
+        window.api.ptyResize(sessionId, term.cols, term.rows)
       } catch {
         // ignore resize errors during teardown
       }
     }
-  }, [taskId])
+  }, [sessionId])
 
   // Update terminal theme when resolved theme changes
   useEffect(() => {
@@ -102,7 +102,7 @@ export function TerminalPanel({ taskId }: TerminalPanelProps): React.JSX.Element
     requestAnimationFrame(() => {
       try {
         fitAddon.fit()
-        window.api.ptyResize(taskId, term.cols, term.rows)
+        window.api.ptyResize(sessionId, term.cols, term.rows)
         term.focus()
       } catch {
         // ignore
@@ -116,7 +116,7 @@ export function TerminalPanel({ taskId }: TerminalPanelProps): React.JSX.Element
     term.attachCustomKeyEventHandler((event) => {
       if (event.key === 'Enter' && event.shiftKey) {
         if (event.type === 'keydown') {
-          window.api.ptyWrite(taskId, '\x1b[13;2u')
+          window.api.ptyWrite(sessionId, '\x1b[13;2u')
         }
         return false
       }
@@ -125,12 +125,12 @@ export function TerminalPanel({ taskId }: TerminalPanelProps): React.JSX.Element
 
     // Forward keystrokes to PTY
     term.onData((data) => {
-      window.api.ptyWrite(taskId, data)
+      window.api.ptyWrite(sessionId, data)
     })
 
     // Listen for PTY data
     const cleanupData = window.api.onPtyData((id, data) => {
-      if (id === taskId) {
+      if (id === sessionId) {
         term.write(data)
       }
     })
@@ -152,7 +152,7 @@ export function TerminalPanel({ taskId }: TerminalPanelProps): React.JSX.Element
       terminalRef.current = null
       fitAddonRef.current = null
     }
-  }, [taskId, handleResize, resolved])
+  }, [sessionId, handleResize, resolved])
 
   const bg = resolved === 'dark' ? '#0f0f14' : '#f5f5f7'
 

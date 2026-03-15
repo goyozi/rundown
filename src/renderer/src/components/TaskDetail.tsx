@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   FolderOpen,
   Terminal,
@@ -8,7 +8,10 @@ import {
   Play,
   Square,
   Loader2,
-  Code2
+  Code2,
+  BotMessageSquare,
+  Plus,
+  X
 } from 'lucide-react'
 import { useTaskStore } from '@/store/task-store'
 import { useTheme } from '@/hooks/use-theme'
@@ -28,8 +31,16 @@ import { TerminalPanel } from './TerminalPanel'
 import { ReviewPanel } from './ReviewPanel'
 import { cn } from '@/lib/utils'
 
-type DetailTab = 'terminal' | 'review'
+type DetailTab = 'claude' | 'review' | `shell:${string}`
 type DiffMode = 'uncommitted' | 'branch'
+
+interface ShellTab {
+  id: string
+  label: string
+  sessionId: string
+}
+
+let shellCounter = 0
 
 export function TaskDetail(): React.JSX.Element | null {
   const {
@@ -46,13 +57,15 @@ export function TaskDetail(): React.JSX.Element | null {
   const [isStarting, setIsStarting] = useState(false)
   const [tabPerTask, setTabPerTask] = useState<Record<string, DetailTab>>({})
   const [modePerTask, setModePerTask] = useState<Record<string, DiffMode>>({})
+  const [shellTabsPerTask, setShellTabsPerTask] = useState<Record<string, ShellTab[]>>({})
 
-  const activeTab = (selectedTaskId && tabPerTask[selectedTaskId]) || 'terminal'
+  const activeTab = (selectedTaskId && tabPerTask[selectedTaskId]) || 'claude'
   const setActiveTab = (tab: DetailTab): void => {
     if (selectedTaskId) {
       setTabPerTask((prev) => ({ ...prev, [selectedTaskId]: tab }))
     }
   }
+  const shellTabs = (selectedTaskId && shellTabsPerTask[selectedTaskId]) || []
 
   const diffMode: DiffMode = (selectedTaskId && modePerTask[selectedTaskId]) || 'uncommitted'
   const setDiffMode = useCallback(
@@ -63,6 +76,42 @@ export function TaskDetail(): React.JSX.Element | null {
     },
     [selectedTaskId]
   )
+
+  // Clean up shell tab when its PTY process exits naturally (e.g. user types `exit`)
+  useEffect(() => {
+    const cleanup = window.api.onPtyExit((exitedSessionId) => {
+      // Shell session IDs are formatted as "taskId:shell-N"
+      if (!exitedSessionId.includes(':shell-')) return
+
+      setShellTabsPerTask((prev) => {
+        const updated = { ...prev }
+        for (const [taskId, tabs] of Object.entries(updated)) {
+          const match = tabs.find((t) => t.sessionId === exitedSessionId)
+          if (match) {
+            updated[taskId] = tabs.filter((t) => t.id !== match.id)
+            break
+          }
+        }
+        return updated
+      })
+
+      // Switch away from the closed tab if it was active
+      setTabPerTask((prev) => {
+        const updated = { ...prev }
+        for (const [taskId, tab] of Object.entries(updated)) {
+          if (typeof tab === 'string' && tab.startsWith('shell:')) {
+            const shellId = tab.slice('shell:'.length)
+            if (exitedSessionId.endsWith(`:${shellId}`)) {
+              updated[taskId] = 'claude'
+              break
+            }
+          }
+        }
+        return updated
+      })
+    })
+    return cleanup
+  }, [])
 
   if (!selectedTaskId) {
     return (
@@ -131,6 +180,38 @@ export function TaskDetail(): React.JSX.Element | null {
   const handleStopSession = async (): Promise<void> => {
     await window.api.ptyKill(task.id)
     stopSession(task.id)
+  }
+
+  const handleAddShellTab = async (): Promise<void> => {
+    if (!effectiveDir || !selectedTaskId) return
+    shellCounter++
+    const id = `shell-${shellCounter}`
+    const sessionId = `${selectedTaskId}:${id}`
+    const num = shellTabs.length + 1
+    const tab: ShellTab = { id, label: `Shell ${num}`, sessionId }
+
+    setShellTabsPerTask((prev) => ({
+      ...prev,
+      [selectedTaskId]: [...(prev[selectedTaskId] || []), tab]
+    }))
+    setActiveTab(`shell:${id}`)
+
+    await window.api.ptySpawnShell(sessionId, effectiveDir, resolved)
+  }
+
+  const handleCloseShellTab = async (shellTab: ShellTab): Promise<void> => {
+    if (!selectedTaskId) return
+    await window.api.ptyKill(shellTab.sessionId)
+
+    setShellTabsPerTask((prev) => ({
+      ...prev,
+      [selectedTaskId]: (prev[selectedTaskId] || []).filter((t) => t.id !== shellTab.id)
+    }))
+
+    // Switch away if this was the active tab
+    if (activeTab === `shell:${shellTab.id}`) {
+      setActiveTab('claude')
+    }
   }
 
   const stateBadge = isInProgress ? (
@@ -266,15 +347,15 @@ export function TaskDetail(): React.JSX.Element | null {
           <button
             className={cn(
               'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors -mb-px',
-              activeTab === 'terminal'
+              activeTab === 'claude'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
-            onClick={() => setActiveTab('terminal')}
+            onClick={() => setActiveTab('claude')}
             data-testid="tab-terminal"
           >
-            <Terminal className="size-3.5" />
-            Terminal
+            <BotMessageSquare className="size-3.5" />
+            Claude
           </button>
           {effectiveDir && (
             <button
@@ -291,6 +372,47 @@ export function TaskDetail(): React.JSX.Element | null {
               Review
             </button>
           )}
+          {shellTabs.map((shellTab) => (
+            <div
+              key={shellTab.id}
+              className={cn(
+                'group/tab flex items-center -mb-px border-b-2 transition-colors',
+                activeTab === `shell:${shellTab.id}`
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <button
+                className="flex items-center gap-1.5 pl-3 pr-1 py-2 text-xs font-medium"
+                onClick={() => setActiveTab(`shell:${shellTab.id}`)}
+                data-testid={`tab-${shellTab.id}`}
+              >
+                <Terminal className="size-3.5" />
+                {shellTab.label}
+              </button>
+              <button
+                className="p-0.5 mr-1 rounded opacity-0 group-hover/tab:opacity-100 hover:bg-muted text-muted-foreground/50 hover:text-foreground transition-all"
+                onClick={() => handleCloseShellTab(shellTab)}
+                data-testid={`close-${shellTab.id}`}
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          ))}
+          {effectiveDir && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="flex items-center justify-center size-6 ml-1 rounded hover:bg-muted text-muted-foreground/50 hover:text-foreground transition-colors"
+                  onClick={handleAddShellTab}
+                  data-testid="add-shell-tab"
+                >
+                  <Plus className="size-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Open a shell terminal</TooltipContent>
+            </Tooltip>
+          )}
         </div>
       )}
 
@@ -302,15 +424,23 @@ export function TaskDetail(): React.JSX.Element | null {
           sessionActive={sessionActive}
           mode={diffMode}
           onModeChange={setDiffMode}
-          onSubmitted={() => setActiveTab('terminal')}
+          onSubmitted={() => setActiveTab('claude')}
         />
+      ) : activeTab.startsWith('shell:') ? (
+        (() => {
+          const shellId = activeTab.slice('shell:'.length)
+          const shellTab = shellTabs.find((t) => t.id === shellId)
+          return shellTab ? (
+            <TerminalPanel key={shellTab.sessionId} sessionId={shellTab.sessionId} />
+          ) : null
+        })()
       ) : sessionActive ? (
-        <TerminalPanel taskId={task.id} />
+        <TerminalPanel sessionId={task.id} />
       ) : (
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3 animate-fade-in-up-delay-2">
             <div className="flex items-center justify-center size-12 rounded-xl bg-muted/40 border border-border/40">
-              <Terminal className="size-5 text-muted-foreground/25" />
+              <BotMessageSquare className="size-5 text-muted-foreground/25" />
             </div>
             <p className="text-sm text-muted-foreground/40" data-testid="no-active-session">
               No active session

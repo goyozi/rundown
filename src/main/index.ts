@@ -1,11 +1,12 @@
-import { app, shell, BrowserWindow, ipcMain, nativeTheme, session } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, nativeTheme, session, dialog } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import electronUpdater from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import { registerStoreHandlers, getWindowState, saveWindowState } from './store'
-import { registerPtyHandlers, killAllSessions } from './pty'
+import { registerPtyHandlers, killAllSessions, getActiveSessionCount } from './pty'
+import log from './logger'
 import { ThemeSchema } from './validation'
 import { IPC } from '../shared/channels'
 
@@ -61,7 +62,21 @@ function createWindow(): void {
   win.on('moved', saveCurrentState)
   win.on('maximize', saveCurrentState)
   win.on('unmaximize', saveCurrentState)
-  win.on('close', saveCurrentState)
+  win.on('close', (e) => {
+    saveCurrentState()
+    if (getActiveSessionCount() > 0) {
+      const choice = dialog.showMessageBoxSync(win, {
+        type: 'question',
+        buttons: ['Close', 'Cancel'],
+        defaultId: 1,
+        title: 'Active Sessions',
+        message: 'There are active terminal sessions. Close anyway?'
+      })
+      if (choice === 1) {
+        e.preventDefault()
+      }
+    }
+  })
 
   win.on('ready-to-show', () => {
     win.show()
@@ -73,10 +88,10 @@ function createWindow(): void {
       if (url.protocol === 'https:' || url.protocol === 'http:') {
         shell.openExternal(details.url)
       } else {
-        console.warn('Blocked openExternal for non-HTTP URL:', details.url)
+        log.warn('Blocked openExternal for non-HTTP URL:', details.url)
       }
     } catch {
-      console.warn('Blocked openExternal for invalid URL:', details.url)
+      log.warn('Blocked openExternal for invalid URL:', details.url)
     }
     return { action: 'deny' }
   })
@@ -129,10 +144,10 @@ app.whenReady().then(() => {
   // Check for updates after window is created (production only)
   if (!is.dev) {
     electronUpdater.autoUpdater.on('error', (err) => {
-      console.error('Auto-updater error:', err)
+      log.error('Auto-updater error:', err)
     })
     electronUpdater.autoUpdater.checkForUpdatesAndNotify().catch((err) => {
-      console.error('Auto-updater check failed:', err)
+      log.error('Auto-updater check failed:', err)
     })
   }
 

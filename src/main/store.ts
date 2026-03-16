@@ -1,6 +1,7 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import Store from 'electron-store'
 import simpleGit from 'simple-git'
+import { runMigrations, type StoreAccess } from './migrations'
 import { existsSync } from 'fs'
 import { isAbsolute } from 'path'
 import type { Task, TaskGroup } from '../shared/types'
@@ -14,6 +15,10 @@ import {
   BranchNameSchema
 } from './validation'
 import { IPC } from '../shared/channels'
+
+function createGit(dir: string): ReturnType<typeof simpleGit> {
+  return simpleGit(dir, { timeout: { block: 15000 } })
+}
 
 interface WindowState {
   x?: number
@@ -30,6 +35,7 @@ interface StoreSchema {
   windowState: WindowState
   sidebarWidth: number
   rootTaskOrder: Record<string, string[]>
+  schemaVersion: number
 }
 
 const DEFAULT_GROUP_ID = '00000000-0000-0000-0000-000000000000'
@@ -45,7 +51,8 @@ const storeOptions: ConstructorParameters<typeof Store<StoreSchema>>[0] = {
       isMaximized: false
     },
     sidebarWidth: 320,
-    rootTaskOrder: {}
+    rootTaskOrder: {},
+    schemaVersion: 2
   }
 }
 
@@ -55,51 +62,7 @@ if (process.env.ELECTRON_STORE_PATH) {
 
 const store = new Store<StoreSchema>(storeOptions)
 
-// Migrate existing data: if groups are empty but tasks exist, create default group and assign tasks
-function migrateIfNeeded(): void {
-  const groups = store.get('groups')
-  const tasks = store.get('tasks')
-
-  if ((!groups || groups.length === 0) && tasks.length > 0) {
-    const defaultGroup: TaskGroup = {
-      id: DEFAULT_GROUP_ID,
-      name: 'Rundown',
-      createdAt: new Date().toISOString()
-    }
-    store.set('groups', [defaultGroup])
-    store.set('activeGroupId', DEFAULT_GROUP_ID)
-    store.set(
-      'tasks',
-      tasks.map((t) => ({ ...t, groupId: DEFAULT_GROUP_ID }))
-    )
-  } else if (groups && groups.length > 0 && tasks.some((t) => !t.groupId)) {
-    // Some tasks missing groupId — assign to first group
-    const firstGroupId = groups[0].id
-    store.set(
-      'tasks',
-      tasks.map((t) => (t.groupId ? t : { ...t, groupId: firstGroupId }))
-    )
-  }
-}
-
-migrateIfNeeded()
-
-// Migrate: build rootTaskOrder from existing tasks if missing
-function migrateRootTaskOrder(): void {
-  const rootTaskOrder = store.get('rootTaskOrder')
-  const tasks = store.get('tasks')
-  const groups = store.get('groups')
-
-  if (Object.keys(rootTaskOrder).length === 0 && tasks.length > 0) {
-    const order: Record<string, string[]> = {}
-    for (const group of groups) {
-      order[group.id] = tasks.filter((t) => !t.parentId && t.groupId === group.id).map((t) => t.id)
-    }
-    store.set('rootTaskOrder', order)
-  }
-}
-
-migrateRootTaskOrder()
+runMigrations(store as unknown as StoreAccess)
 
 export function getWindowState(): WindowState {
   return store.get('windowState')
@@ -169,7 +132,7 @@ export function registerStoreHandlers(): void {
         return { valid: false, error: 'Path does not exist' }
       }
       try {
-        const git = simpleGit(dir)
+        const git = createGit(dir)
         const isRepo = await git.checkIsRepo()
         if (!isRepo) {
           return { valid: false, error: 'Not a Git repository' }
@@ -189,7 +152,7 @@ export function registerStoreHandlers(): void {
     ): Promise<{ current: string; mainBranch: string | null; error?: string }> => {
       const dir = DirPathSchema.parse(dirPath)
       try {
-        const git = simpleGit(dir)
+        const git = createGit(dir)
         const branchSummary = await git.branch()
         const current = branchSummary.current
 
@@ -214,7 +177,7 @@ export function registerStoreHandlers(): void {
     async (_event, dirPath: unknown): Promise<{ diff: string; error?: string }> => {
       const dir = DirPathSchema.parse(dirPath)
       try {
-        const git = simpleGit(dir)
+        const git = createGit(dir)
         // Show both staged and unstaged changes vs HEAD
         const trackedDiff = await git.diff(['HEAD'])
 
@@ -249,7 +212,7 @@ export function registerStoreHandlers(): void {
       const dir = DirPathSchema.parse(dirPath)
       const branch = BranchNameSchema.parse(mainBranch)
       try {
-        const git = simpleGit(dir)
+        const git = createGit(dir)
         // Use merge-base so only changes on the current branch are shown,
         // not changes made on the main branch after the branch point
         const mergeBase = (await git.raw(['merge-base', branch, 'HEAD'])).trim()

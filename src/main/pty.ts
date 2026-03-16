@@ -68,6 +68,10 @@ function cleanupOrphanedSessions(): void {
   }
 }
 
+export function getActiveSessionCount(): number {
+  return sessions.size
+}
+
 export function killAllSessions(): void {
   for (const [id, proc] of sessions) {
     proc.kill()

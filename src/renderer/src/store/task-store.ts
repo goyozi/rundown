@@ -13,9 +13,9 @@ interface TaskStore {
   rootTaskOrder: Record<string, string[]>
 
   loadTasks: () => Promise<void>
-  persist: () => Promise<void>
-  persistGroups: () => Promise<void>
-  persistRootTaskOrder: () => Promise<void>
+  persist: () => void
+  persistGroups: () => void
+  persistRootTaskOrder: () => void
 
   addTask: (description: string, parentId?: string) => void
   updateDescription: (id: string, description: string) => void
@@ -48,6 +48,21 @@ interface TaskStore {
   getGroupTaskCount: (groupId: string) => number
 }
 
+function debouncedLeadingTrailing(fn: () => Promise<void>): () => void {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  return () => {
+    if (timer === null) {
+      fn()
+    } else {
+      clearTimeout(timer)
+    }
+    timer = setTimeout(() => {
+      timer = null
+      fn()
+    }, 300)
+  }
+}
+
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
   groups: [],
@@ -67,17 +82,29 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     set({ tasks, groups, activeGroupId, rootTaskOrder, loaded: true })
   },
 
-  persist: async () => {
-    await window.api.saveTasks(get().tasks)
-  },
+  persist: debouncedLeadingTrailing(async () => {
+    try {
+      await window.api.saveTasks(get().tasks)
+    } catch (err) {
+      console.error('Failed to persist tasks:', err)
+    }
+  }),
 
-  persistGroups: async () => {
-    await window.api.saveGroups(get().groups)
-  },
+  persistGroups: debouncedLeadingTrailing(async () => {
+    try {
+      await window.api.saveGroups(get().groups)
+    } catch (err) {
+      console.error('Failed to persist groups:', err)
+    }
+  }),
 
-  persistRootTaskOrder: async () => {
-    await window.api.saveRootTaskOrder(get().rootTaskOrder)
-  },
+  persistRootTaskOrder: debouncedLeadingTrailing(async () => {
+    try {
+      await window.api.saveRootTaskOrder(get().rootTaskOrder)
+    } catch (err) {
+      console.error('Failed to persist root task order:', err)
+    }
+  }),
 
   addTask: (description, parentId) => {
     const id = crypto.randomUUID()

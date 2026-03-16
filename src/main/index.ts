@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, nativeTheme } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, nativeTheme, session } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -6,6 +6,7 @@ import electronUpdater from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import { registerStoreHandlers, getWindowState, saveWindowState } from './store'
 import { registerPtyHandlers, killAllSessions } from './pty'
+import { ThemeSchema } from './validation'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -25,8 +26,8 @@ function createWindow(): void {
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
-      preload: join(__dirname, '../preload/index.mjs'),
-      sandbox: false
+      preload: join(__dirname, '../preload/index.cjs'),
+      sandbox: true
     }
   })
 
@@ -65,7 +66,16 @@ function createWindow(): void {
   })
 
   win.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    try {
+      const url = new URL(details.url)
+      if (url.protocol === 'https:' || url.protocol === 'http:') {
+        shell.openExternal(details.url)
+      } else {
+        console.warn('Blocked openExternal for non-HTTP URL:', details.url)
+      }
+    } catch {
+      console.warn('Blocked openExternal for invalid URL:', details.url)
+    }
     return { action: 'deny' }
   })
 
@@ -92,18 +102,36 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  // Set Content Security Policy
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const csp = is.dev
+      ? "default-src 'self' http://localhost:*; script-src 'self' 'unsafe-inline' http://localhost:*; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws://localhost:* http://localhost:*"
+      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'"
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp]
+      }
+    })
+  })
+
   registerStoreHandlers()
   registerPtyHandlers(() => mainWindow)
 
-  ipcMain.handle('theme:set', (_event, theme: 'light' | 'dark' | 'system') => {
-    nativeTheme.themeSource = theme
+  ipcMain.handle('theme:set', (_event, theme: unknown) => {
+    nativeTheme.themeSource = ThemeSchema.parse(theme)
   })
 
   createWindow()
 
   // Check for updates after window is created (production only)
   if (!is.dev) {
-    electronUpdater.autoUpdater.checkForUpdatesAndNotify()
+    electronUpdater.autoUpdater.on('error', (err) => {
+      console.error('Auto-updater error:', err)
+    })
+    electronUpdater.autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      console.error('Auto-updater check failed:', err)
+    })
   }
 
   app.on('activate', function () {

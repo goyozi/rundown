@@ -2,7 +2,17 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import Store from 'electron-store'
 import simpleGit from 'simple-git'
 import { existsSync } from 'fs'
+import { isAbsolute } from 'path'
 import type { Task, TaskGroup } from '../shared/types'
+import {
+  TasksArraySchema,
+  GroupsArraySchema,
+  ActiveGroupIdSchema,
+  SidebarWidthSchema,
+  RootTaskOrderSchema,
+  DirPathSchema,
+  BranchNameSchema
+} from './validation'
 
 interface WindowState {
   x?: number
@@ -103,40 +113,40 @@ export function registerStoreHandlers(): void {
     return store.get('tasks')
   })
 
-  ipcMain.handle('store:save-tasks', (_event, tasks: Task[]) => {
-    store.set('tasks', tasks)
+  ipcMain.handle('store:save-tasks', (_event, tasks: unknown) => {
+    store.set('tasks', TasksArraySchema.parse(tasks) as Task[])
   })
 
   ipcMain.handle('store:get-groups', () => {
     return store.get('groups')
   })
 
-  ipcMain.handle('store:save-groups', (_event, groups: TaskGroup[]) => {
-    store.set('groups', groups)
+  ipcMain.handle('store:save-groups', (_event, groups: unknown) => {
+    store.set('groups', GroupsArraySchema.parse(groups) as TaskGroup[])
   })
 
   ipcMain.handle('store:get-active-group-id', () => {
     return store.get('activeGroupId')
   })
 
-  ipcMain.handle('store:save-active-group-id', (_event, id: string) => {
-    store.set('activeGroupId', id)
+  ipcMain.handle('store:save-active-group-id', (_event, id: unknown) => {
+    store.set('activeGroupId', ActiveGroupIdSchema.parse(id))
   })
 
   ipcMain.handle('store:get-sidebar-width', () => {
     return store.get('sidebarWidth')
   })
 
-  ipcMain.handle('store:save-sidebar-width', (_event, width: number) => {
-    store.set('sidebarWidth', width)
+  ipcMain.handle('store:save-sidebar-width', (_event, width: unknown) => {
+    store.set('sidebarWidth', SidebarWidthSchema.parse(width))
   })
 
   ipcMain.handle('store:get-root-task-order', () => {
     return store.get('rootTaskOrder')
   })
 
-  ipcMain.handle('store:save-root-task-order', (_event, order: Record<string, string[]>) => {
-    store.set('rootTaskOrder', order)
+  ipcMain.handle('store:save-root-task-order', (_event, order: unknown) => {
+    store.set('rootTaskOrder', RootTaskOrderSchema.parse(order))
   })
 
   ipcMain.handle('dialog:open-directory', async (event) => {
@@ -151,12 +161,14 @@ export function registerStoreHandlers(): void {
 
   ipcMain.handle(
     'git:validate-repo',
-    async (_event, dirPath: string): Promise<{ valid: boolean; error?: string }> => {
-      if (!existsSync(dirPath)) {
+    async (_event, dirPath: unknown): Promise<{ valid: boolean; error?: string }> => {
+      const dir = DirPathSchema.parse(dirPath)
+      if (!isAbsolute(dir)) return { valid: false, error: 'Path must be absolute' }
+      if (!existsSync(dir)) {
         return { valid: false, error: 'Path does not exist' }
       }
       try {
-        const git = simpleGit(dirPath)
+        const git = simpleGit(dir)
         const isRepo = await git.checkIsRepo()
         if (!isRepo) {
           return { valid: false, error: 'Not a Git repository' }
@@ -172,10 +184,11 @@ export function registerStoreHandlers(): void {
     'git:detect-branch',
     async (
       _event,
-      dirPath: string
+      dirPath: unknown
     ): Promise<{ current: string; mainBranch: string | null; error?: string }> => {
+      const dir = DirPathSchema.parse(dirPath)
       try {
-        const git = simpleGit(dirPath)
+        const git = simpleGit(dir)
         const branchSummary = await git.branch()
         const current = branchSummary.current
 
@@ -197,9 +210,10 @@ export function registerStoreHandlers(): void {
 
   ipcMain.handle(
     'git:diff-uncommitted',
-    async (_event, dirPath: string): Promise<{ diff: string; error?: string }> => {
+    async (_event, dirPath: unknown): Promise<{ diff: string; error?: string }> => {
+      const dir = DirPathSchema.parse(dirPath)
       try {
-        const git = simpleGit(dirPath)
+        const git = simpleGit(dir)
         // Show both staged and unstaged changes vs HEAD
         const trackedDiff = await git.diff(['HEAD'])
 
@@ -228,14 +242,16 @@ export function registerStoreHandlers(): void {
     'git:diff-branch',
     async (
       _event,
-      dirPath: string,
-      mainBranch: string
+      dirPath: unknown,
+      mainBranch: unknown
     ): Promise<{ diff: string; error?: string }> => {
+      const dir = DirPathSchema.parse(dirPath)
+      const branch = BranchNameSchema.parse(mainBranch)
       try {
-        const git = simpleGit(dirPath)
+        const git = simpleGit(dir)
         // Use merge-base so only changes on the current branch are shown,
         // not changes made on the main branch after the branch point
-        const mergeBase = (await git.raw(['merge-base', mainBranch, 'HEAD'])).trim()
+        const mergeBase = (await git.raw(['merge-base', branch, 'HEAD'])).trim()
         const diff = await git.diff([mergeBase])
         return { diff }
       } catch {

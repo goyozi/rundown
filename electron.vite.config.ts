@@ -14,7 +14,17 @@ export default defineConfig({
       }
     }
   },
-  preload: {},
+  preload: {
+    build: {
+      // Bundle all deps into the preload script so sandbox mode can load it
+      externalizeDeps: { exclude: ['@electron-toolkit/preload'] },
+      rollupOptions: {
+        output: {
+          format: 'cjs'
+        }
+      }
+    }
+  },
   renderer: {
     resolve: {
       alias: {

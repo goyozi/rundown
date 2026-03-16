@@ -62,7 +62,7 @@ export function useTaskKeyboardNav(containerRef: RefObject<HTMLDivElement | null
             } else if (currentIndex === 0) {
               selectTask(null)
               const input = document.querySelector<HTMLInputElement>(
-                '[data-testid="new-task-input"]'
+                '[data-action="new-task-input"]'
               )
               input?.focus()
             } else if (currentIndex === -1 && visibleIds.length > 0) {
@@ -76,7 +76,7 @@ export function useTaskKeyboardNav(containerRef: RefObject<HTMLDivElement | null
           if (!selectedTaskId) return
           const taskEl = containerRef.current?.querySelector(`[data-task-id="${selectedTaskId}"]`)
           const addChildBtn = taskEl?.querySelector(
-            '[data-testid="add-subtask"]'
+            '[data-action="add-subtask"]'
           ) as HTMLElement | null
           addChildBtn?.click()
           break
@@ -86,7 +86,7 @@ export function useTaskKeyboardNav(containerRef: RefObject<HTMLDivElement | null
           e.preventDefault()
           if (!selectedTaskId) return
           const editEl = containerRef.current?.querySelector(`[data-task-id="${selectedTaskId}"]`)
-          const editBtn = editEl?.querySelector('[data-testid="edit-task"]') as HTMLElement | null
+          const editBtn = editEl?.querySelector('[data-action="edit-task"]') as HTMLElement | null
           editBtn?.click()
           break
         }

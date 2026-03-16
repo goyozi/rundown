@@ -25,12 +25,14 @@ function ActionButton({
   label,
   className,
   testId,
+  action,
   children
 }: {
   onClick: (e: React.MouseEvent) => void
   label: string
   className?: string
   testId?: string
+  action?: string
   children: React.ReactNode
 }): React.ReactElement {
   return (
@@ -42,6 +44,7 @@ function ActionButton({
           className={cn('size-5 text-muted-foreground hover:text-foreground', className)}
           onClick={onClick}
           data-testid={testId}
+          data-action={action}
         >
           {children}
         </Button>
@@ -251,6 +254,7 @@ export function TaskItem({
                 }}
                 label="Edit"
                 testId="edit-task"
+                action="edit-task"
               >
                 <Pencil className="size-2.5" />
               </ActionButton>
@@ -262,6 +266,7 @@ export function TaskItem({
                   }}
                   label="Add sub-task"
                   testId="add-subtask"
+                  action="add-subtask"
                 >
                   <Plus className="size-2.5" />
                 </ActionButton>

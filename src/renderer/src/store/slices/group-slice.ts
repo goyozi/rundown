@@ -49,11 +49,22 @@ export const createGroupSlice: StateCreator<FullStore, [], [], GroupSlice> = (se
       commentStore.clearComments(taskId)
     }
 
+    const { shellTabsPerTask } = get()
     for (const taskId of groupTaskIds) {
       if (activeSessions.has(taskId)) {
         window.api.ptyKill(taskId).catch((err) => {
           window.api.logError(
             `Failed to kill session ${taskId} during group removal`,
+            err instanceof Error ? err.stack : String(err)
+          )
+        })
+      }
+      // Kill any shell tab processes
+      const shellTabs = shellTabsPerTask[taskId] ?? []
+      for (const tab of shellTabs) {
+        window.api.ptyKill(tab.sessionId).catch((err) => {
+          window.api.logError(
+            `Failed to kill shell session ${tab.sessionId} during group removal`,
             err instanceof Error ? err.stack : String(err)
           )
         })
@@ -67,6 +78,11 @@ export const createGroupSlice: StateCreator<FullStore, [], [], GroupSlice> = (se
       const rootTaskOrder = { ...state.rootTaskOrder }
       delete rootTaskOrder[id]
 
+      const updatedShellTabs = { ...state.shellTabsPerTask }
+      for (const taskId of groupTaskIds) {
+        delete updatedShellTabs[taskId]
+      }
+
       return {
         groups: remainingGroups,
         tasks: state.tasks.filter((t) => t.groupId !== id),
@@ -78,6 +94,7 @@ export const createGroupSlice: StateCreator<FullStore, [], [], GroupSlice> = (se
           state.selectedTaskId && groupTaskIds.includes(state.selectedTaskId)
             ? null
             : state.selectedTaskId,
+        shellTabsPerTask: updatedShellTabs,
         rootTaskOrder
       }
     })

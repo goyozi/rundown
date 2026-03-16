@@ -112,8 +112,8 @@ export const createTaskSlice: StateCreator<FullStore, [], [], TaskSlice> = (set,
       commentStore.clearComments(taskId)
     }
 
-    // Kill active sessions for the task and all its descendants
-    const { activeSessions, stopSession } = get()
+    // Kill active sessions (Claude + shell tabs) for the task and all its descendants
+    const { activeSessions, stopSession, shellTabsPerTask, removeShellTab } = get()
     for (const taskId of idsToRemove) {
       if (activeSessions.has(taskId)) {
         window.api.ptyKill(taskId).catch((err) => {
@@ -123,6 +123,17 @@ export const createTaskSlice: StateCreator<FullStore, [], [], TaskSlice> = (set,
           )
         })
         stopSession(taskId)
+      }
+      // Kill any shell tab processes
+      const shellTabs = shellTabsPerTask[taskId] ?? []
+      for (const tab of shellTabs) {
+        window.api.ptyKill(tab.sessionId).catch((err) => {
+          window.api.logError(
+            `Failed to kill shell session ${tab.sessionId} during task deletion`,
+            err instanceof Error ? err.stack : String(err)
+          )
+        })
+        removeShellTab(taskId, tab.id)
       }
     }
 

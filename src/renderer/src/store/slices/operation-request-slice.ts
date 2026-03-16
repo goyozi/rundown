@@ -24,7 +24,8 @@ export const createOperationRequestSlice: StateCreator<FullStore, [], [], Operat
     const task = get().getTask(taskId)
     if (!task) return
     const hasChildren = get().getChildren(taskId).length > 0
-    if (!hasChildren && !get().activeSessions.has(taskId)) {
+    const hasShellTabs = (get().shellTabsPerTask[taskId] ?? []).length > 0
+    if (!hasChildren && !get().activeSessions.has(taskId) && !hasShellTabs) {
       // No confirmation needed — delete immediately
       get().deleteTask(taskId)
       return
@@ -39,7 +40,8 @@ export const createOperationRequestSlice: StateCreator<FullStore, [], [], Operat
       get().markIdle(taskId)
       return
     }
-    if (get().activeSessions.has(taskId)) {
+    const hasShellTabs = (get().shellTabsPerTask[taskId] ?? []).length > 0
+    if (get().activeSessions.has(taskId) || hasShellTabs) {
       // Needs confirmation — session is active
       set({ pendingOperation: { type: 'markDone', taskId } })
       return
@@ -61,6 +63,16 @@ export const createOperationRequestSlice: StateCreator<FullStore, [], [], Operat
         // Process may have already exited
       }
       get().stopSession(op.taskId)
+      // Kill any shell tab processes
+      const shellTabs = get().shellTabsPerTask[op.taskId] ?? []
+      for (const tab of shellTabs) {
+        try {
+          await window.api.ptyKill(tab.sessionId)
+        } catch {
+          // Process may have already exited
+        }
+        get().removeShellTab(op.taskId, tab.id)
+      }
       get().markDone(op.taskId)
     }
   },

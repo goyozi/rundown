@@ -154,6 +154,7 @@ export function TaskList(): React.JSX.Element {
             }}
             className="h-8 text-sm bg-background/60 placeholder:text-muted-foreground/60"
             data-testid="new-task-input"
+            data-action="new-task-input"
           />
           <Button
             variant="outline"

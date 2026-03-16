@@ -21,7 +21,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('Uncaught error:', error, errorInfo)
+    window.api.logError(
+      `ErrorBoundary: ${error.message}`,
+      [error.stack, errorInfo.componentStack].filter(Boolean).join('\n')
+    )
   }
 
   render(): ReactNode {

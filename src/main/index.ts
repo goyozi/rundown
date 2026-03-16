@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, nativeTheme, session, dialog } from 'electron'
+import { app, shell, BrowserWindow, nativeTheme, session, dialog } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -9,6 +9,7 @@ import { registerPtyHandlers, killAllSessions, getActiveSessionCount } from './p
 import log from './logger'
 import { ThemeSchema } from './validation'
 import { IPC } from '../shared/channels'
+import { safeHandle } from './ipc-utils'
 
 // ESM has no __dirname — polyfill it from import.meta.url so join() calls below work
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -135,8 +136,12 @@ app.whenReady().then(() => {
   registerStoreHandlers()
   registerPtyHandlers(() => mainWindow)
 
-  ipcMain.handle(IPC.THEME_SET, (_event, theme: unknown) => {
+  safeHandle(IPC.THEME_SET, (_event, theme: unknown) => {
     nativeTheme.themeSource = ThemeSchema.parse(theme)
+  })
+
+  safeHandle(IPC.RENDERER_LOG_ERROR, (_event, message: unknown, stack?: unknown) => {
+    log.error('[Renderer]', message, stack ?? '')
   })
 
   createWindow()

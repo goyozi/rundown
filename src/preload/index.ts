@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { Task, TaskGroup } from '../shared/types'
+import type { Task, TaskGroup, Comment } from '../shared/types'
 import { IPC } from '../shared/channels'
 
 const api = {
@@ -15,6 +15,11 @@ const api = {
   getRootTaskOrder: () => ipcRenderer.invoke(IPC.STORE_GET_ROOT_TASK_ORDER),
   saveRootTaskOrder: (order: Record<string, string[]>) =>
     ipcRenderer.invoke(IPC.STORE_SAVE_ROOT_TASK_ORDER, order),
+  getComments: () => ipcRenderer.invoke(IPC.STORE_GET_COMMENTS),
+  saveComments: (comments: Record<string, Comment[]>) =>
+    ipcRenderer.invoke(IPC.STORE_SAVE_COMMENTS, comments),
+  logError: (message: string, stack?: string) =>
+    ipcRenderer.invoke(IPC.RENDERER_LOG_ERROR, message, stack),
   openDirectory: () => ipcRenderer.invoke(IPC.DIALOG_OPEN_DIRECTORY),
   validateRepo: (dirPath: string) => ipcRenderer.invoke(IPC.GIT_VALIDATE_REPO, dirPath),
   detectBranch: (dirPath: string) => ipcRenderer.invoke(IPC.GIT_DETECT_BRANCH, dirPath),

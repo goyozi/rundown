@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef, useMemo } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -27,18 +27,13 @@ export interface DropIntent {
 }
 
 export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
-  const { getChildren, moveTask, getDepth, isDescendant, getMaxSubtreeDepth, activeSessions } =
-    useTaskStore(
-      useShallow((s) => ({
-        _tasks: s.tasks, // trigger re-renders for derived getters
-        getChildren: s.getChildren,
-        moveTask: s.moveTask,
-        getDepth: s.getDepth,
-        isDescendant: s.isDescendant,
-        getMaxSubtreeDepth: s.getMaxSubtreeDepth,
-        activeSessions: s.activeSessions
-      }))
-    )
+  const { moveTask, activeSessions, allTasks } = useTaskStore(
+    useShallow((s) => ({
+      moveTask: s.moveTask,
+      activeSessions: s.activeSessions,
+      allTasks: s.tasks
+    }))
+  )
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
   const [dropIntent, setDropIntent] = useState<DropIntent | null>(null)
   const dropIntentRef = useRef<DropIntent | null>(null)
@@ -49,22 +44,27 @@ export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   // Collect all task IDs recursively for SortableContext
-  function collectAllIds(taskList: Task[]): string[] {
-    const ids: string[] = []
-    for (const task of taskList) {
-      ids.push(task.id)
-      const children = getChildren(task.id)
-      if (children.length > 0) {
-        ids.push(...collectAllIds(children))
+  const allIds = useMemo(() => {
+    const { getChildren } = useTaskStore.getState()
+    function collect(taskList: Task[]): string[] {
+      const ids: string[] = []
+      for (const task of taskList) {
+        ids.push(task.id)
+        const children = getChildren(task.id)
+        if (children.length > 0) {
+          ids.push(...collect(children))
+        }
       }
+      return ids
     }
-    return ids
-  }
-
-  const allIds = collectAllIds(tasks)
+    return collect(tasks)
+    // allTasks triggers recompute when any task (including children) changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, allTasks])
 
   const findTaskById = useCallback(
     (id: string): Task | undefined => {
+      const { getChildren } = useTaskStore.getState()
       const search = (list: Task[]): Task | undefined => {
         for (const t of list) {
           if (t.id === id) return t
@@ -76,7 +76,7 @@ export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
       }
       return search(tasks)
     },
-    [tasks, getChildren]
+    [tasks]
   )
 
   const handleDragStart = useCallback(
@@ -94,6 +94,7 @@ export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
       overId: string,
       activeIdStr: string
     ): 'before' | 'after' | 'inside' | null => {
+      const { isDescendant, getDepth, getMaxSubtreeDepth } = useTaskStore.getState()
       if (isDescendant(activeIdStr, overId)) return null
 
       const overRect = event.over?.rect
@@ -136,7 +137,7 @@ export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
 
       return position
     },
-    [isDescendant, getDepth, getMaxSubtreeDepth]
+    []
   )
 
   const updateDropIntent = useCallback((intent: DropIntent | null) => {
@@ -183,6 +184,7 @@ export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
 
       if (!intent) return
 
+      const { getChildren } = useTaskStore.getState()
       const activeIdStr = String(active.id)
       const { targetId, position } = intent
 
@@ -216,7 +218,7 @@ export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
         moveTask(activeIdStr, overParentId, insertIndex)
       }
     },
-    [moveTask, tasks, getChildren, updateDropIntent]
+    [moveTask, tasks, updateDropIntent]
   )
 
   const handleDragCancel = useCallback(() => {

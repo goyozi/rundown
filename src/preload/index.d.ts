@@ -1,5 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import type { Task, TaskGroup } from '../shared/types'
+import type { Task, TaskGroup, Comment } from '../shared/types'
 
 interface RundownAPI {
   getTasks(): Promise<Task[]>
@@ -12,6 +12,9 @@ interface RundownAPI {
   saveSidebarWidth(width: number): Promise<void>
   getRootTaskOrder(): Promise<Record<string, string[]>>
   saveRootTaskOrder(order: Record<string, string[]>): Promise<void>
+  getComments(): Promise<Record<string, Comment[]>>
+  saveComments(comments: Record<string, Comment[]>): Promise<void>
+  logError(message: string, stack?: string): Promise<void>
   openDirectory(): Promise<string | undefined>
   validateRepo(dirPath: string): Promise<{ valid: boolean; error?: string }>
   detectBranch(

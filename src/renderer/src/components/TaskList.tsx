@@ -25,7 +25,6 @@ export function TaskList(): React.JSX.Element {
     getRootTasks,
     addTask,
     groups,
-    activeGroupId,
     getActiveGroup,
     removeGroup,
     getGroupTaskCount,
@@ -38,7 +37,6 @@ export function TaskList(): React.JSX.Element {
       getRootTasks: s.getRootTasks,
       addTask: s.addTask,
       groups: s.groups,
-      activeGroupId: s.activeGroupId,
       getActiveGroup: s.getActiveGroup,
       removeGroup: s.removeGroup,
       getGroupTaskCount: s.getGroupTaskCount,
@@ -89,7 +87,9 @@ export function TaskList(): React.JSX.Element {
       const result = await window.api.validateRepo(dir)
       if (result.valid) {
         setGroupDirError(null)
-        updateGroupDirectory(activeGroupId, dir)
+        // Read fresh activeGroupId after awaits to avoid stale closure
+        const freshGroupId = useTaskStore.getState().activeGroupId
+        updateGroupDirectory(freshGroupId, dir)
       } else {
         setGroupDirError(result.error ?? 'Invalid directory')
       }

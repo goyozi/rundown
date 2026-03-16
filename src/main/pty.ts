@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, app } from 'electron'
+import { BrowserWindow, app } from 'electron'
 import * as pty from 'node-pty'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
@@ -10,6 +10,7 @@ import {
   PtyResizeSchema
 } from './validation'
 import { IPC } from '../shared/channels'
+import { safeHandle } from './ipc-utils'
 
 // Denylist of env vars that should not leak into PTY sessions.
 // Electron-specific vars could allow escaping the sandbox, and
@@ -132,7 +133,7 @@ function spawnSession(
 export function registerPtyHandlers(getMainWindow: () => BrowserWindow | null): void {
   cleanupOrphanedSessions()
 
-  ipcMain.handle(
+  safeHandle(
     IPC.PTY_SPAWN,
     (
       _event,
@@ -148,7 +149,7 @@ export function registerPtyHandlers(getMainWindow: () => BrowserWindow | null): 
     }
   )
 
-  ipcMain.handle(
+  safeHandle(
     IPC.PTY_SPAWN_SHELL,
     (
       _event,
@@ -164,7 +165,7 @@ export function registerPtyHandlers(getMainWindow: () => BrowserWindow | null): 
     }
   )
 
-  ipcMain.handle(IPC.PTY_WRITE, (_event, taskId: unknown, data: unknown): void => {
+  safeHandle(IPC.PTY_WRITE, (_event, taskId: unknown, data: unknown): void => {
     const id = SessionIdSchema.parse(taskId)
     const str = PtyWriteDataSchema.parse(data)
     const proc = sessions.get(id)
@@ -173,7 +174,7 @@ export function registerPtyHandlers(getMainWindow: () => BrowserWindow | null): 
     }
   })
 
-  ipcMain.handle(IPC.PTY_RESIZE, (_event, taskId: unknown, cols: unknown, rows: unknown): void => {
+  safeHandle(IPC.PTY_RESIZE, (_event, taskId: unknown, cols: unknown, rows: unknown): void => {
     const { cols: c, rows: r } = PtyResizeSchema.parse({ cols, rows })
     const id = SessionIdSchema.parse(taskId)
     const proc = sessions.get(id)
@@ -182,7 +183,7 @@ export function registerPtyHandlers(getMainWindow: () => BrowserWindow | null): 
     }
   })
 
-  ipcMain.handle(IPC.PTY_KILL, (_event, taskId: unknown): void => {
+  safeHandle(IPC.PTY_KILL, (_event, taskId: unknown): void => {
     const id = SessionIdSchema.parse(taskId)
     const proc = sessions.get(id)
     if (proc) {

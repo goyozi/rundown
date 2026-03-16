@@ -1,16 +1,16 @@
 import { create } from 'zustand'
+import type { Comment } from '../../../shared/types'
+import { debouncedLeadingTrailing } from '../lib/debounce'
 
-export interface Comment {
-  id: string
-  filePath: string
-  changeKey: string // react-diff-view change key (e.g. "I5", "D3", "N10")
-  lineNumber: number
-  body: string
-}
+export type { Comment }
 
 interface CommentStore {
   // Map<taskId, Comment[]>
   pool: Record<string, Comment[]>
+  loaded: boolean
+
+  loadComments: () => Promise<void>
+  persist: () => void
 
   addComment: (taskId: string, filePath: string, changeKey: string, lineNumber: number) => void
   updateComment: (taskId: string, commentId: string, body: string) => void
@@ -24,6 +24,23 @@ interface CommentStore {
 
 export const useCommentStore = create<CommentStore>((set, get) => ({
   pool: {},
+  loaded: false,
+
+  loadComments: async () => {
+    const pool = await window.api.getComments()
+    set({ pool, loaded: true })
+  },
+
+  persist: debouncedLeadingTrailing(async () => {
+    try {
+      await window.api.saveComments(get().pool)
+    } catch (err) {
+      window.api.logError(
+        'Failed to persist comments',
+        err instanceof Error ? err.stack : String(err)
+      )
+    }
+  }),
 
   addComment: (taskId, filePath, changeKey, lineNumber) => {
     const comment: Comment = {
@@ -39,6 +56,7 @@ export const useCommentStore = create<CommentStore>((set, get) => ({
         [taskId]: [...(state.pool[taskId] ?? []), comment]
       }
     }))
+    get().persist()
   },
 
   updateComment: (taskId, commentId, body) => {
@@ -48,6 +66,7 @@ export const useCommentStore = create<CommentStore>((set, get) => ({
         [taskId]: (state.pool[taskId] ?? []).map((c) => (c.id === commentId ? { ...c, body } : c))
       }
     }))
+    get().persist()
   },
 
   removeComment: (taskId, commentId) => {
@@ -57,6 +76,7 @@ export const useCommentStore = create<CommentStore>((set, get) => ({
         [taskId]: (state.pool[taskId] ?? []).filter((c) => c.id !== commentId)
       }
     }))
+    get().persist()
   },
 
   getComments: (taskId) => get().pool[taskId] ?? [],
@@ -70,6 +90,7 @@ export const useCommentStore = create<CommentStore>((set, get) => ({
       delete next[taskId]
       return { pool: next }
     })
+    get().persist()
   },
 
   getCommentCount: (taskId) => (get().pool[taskId] ?? []).length,

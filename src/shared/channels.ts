@@ -20,6 +20,13 @@ export const IPC = {
   GIT_DIFF_UNCOMMITTED: 'git:diff-uncommitted',
   GIT_DIFF_BRANCH: 'git:diff-branch',
 
+  // Comments
+  STORE_GET_COMMENTS: 'store:get-comments',
+  STORE_SAVE_COMMENTS: 'store:save-comments',
+
+  // Error reporting
+  RENDERER_LOG_ERROR: 'renderer:log-error',
+
   // Theme
   THEME_SET: 'theme:set',
 

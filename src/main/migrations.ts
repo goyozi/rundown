@@ -61,6 +61,15 @@ const migrations: Migration[] = [
         store.set('rootTaskOrder', order)
       }
     }
+  },
+  {
+    version: 3,
+    up: (store) => {
+      const comments = store.get('comments')
+      if (!comments) {
+        store.set('comments', {})
+      }
+    }
   }
 ]
 

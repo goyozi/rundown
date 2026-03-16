@@ -1,10 +1,10 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { dialog, BrowserWindow } from 'electron'
 import Store from 'electron-store'
 import simpleGit from 'simple-git'
 import { runMigrations, type StoreAccess } from './migrations'
 import { existsSync } from 'fs'
 import { isAbsolute } from 'path'
-import type { Task, TaskGroup } from '../shared/types'
+import type { Task, TaskGroup, Comment } from '../shared/types'
 import {
   TasksArraySchema,
   GroupsArraySchema,
@@ -12,9 +12,11 @@ import {
   SidebarWidthSchema,
   RootTaskOrderSchema,
   DirPathSchema,
-  BranchNameSchema
+  BranchNameSchema,
+  CommentsPoolSchema
 } from './validation'
 import { IPC } from '../shared/channels'
+import { safeHandle } from './ipc-utils'
 
 function createGit(dir: string): ReturnType<typeof simpleGit> {
   return simpleGit(dir, { timeout: { block: 15000 } })
@@ -35,6 +37,7 @@ interface StoreSchema {
   windowState: WindowState
   sidebarWidth: number
   rootTaskOrder: Record<string, string[]>
+  comments: Record<string, Comment[]>
   schemaVersion: number
 }
 
@@ -52,7 +55,8 @@ const storeOptions: ConstructorParameters<typeof Store<StoreSchema>>[0] = {
     },
     sidebarWidth: 320,
     rootTaskOrder: {},
-    schemaVersion: 2
+    comments: {},
+    schemaVersion: 3
   }
 }
 
@@ -73,47 +77,47 @@ export function saveWindowState(state: WindowState): void {
 }
 
 export function registerStoreHandlers(): void {
-  ipcMain.handle(IPC.STORE_GET_TASKS, (): Task[] => {
+  safeHandle(IPC.STORE_GET_TASKS, (): Task[] => {
     return store.get('tasks')
   })
 
-  ipcMain.handle(IPC.STORE_SAVE_TASKS, (_event, tasks: unknown): void => {
+  safeHandle(IPC.STORE_SAVE_TASKS, (_event, tasks: unknown): void => {
     store.set('tasks', TasksArraySchema.parse(tasks) as Task[])
   })
 
-  ipcMain.handle(IPC.STORE_GET_GROUPS, (): TaskGroup[] => {
+  safeHandle(IPC.STORE_GET_GROUPS, (): TaskGroup[] => {
     return store.get('groups')
   })
 
-  ipcMain.handle(IPC.STORE_SAVE_GROUPS, (_event, groups: unknown): void => {
+  safeHandle(IPC.STORE_SAVE_GROUPS, (_event, groups: unknown): void => {
     store.set('groups', GroupsArraySchema.parse(groups) as TaskGroup[])
   })
 
-  ipcMain.handle(IPC.STORE_GET_ACTIVE_GROUP_ID, (): string => {
+  safeHandle(IPC.STORE_GET_ACTIVE_GROUP_ID, (): string => {
     return store.get('activeGroupId')
   })
 
-  ipcMain.handle(IPC.STORE_SAVE_ACTIVE_GROUP_ID, (_event, id: unknown): void => {
+  safeHandle(IPC.STORE_SAVE_ACTIVE_GROUP_ID, (_event, id: unknown): void => {
     store.set('activeGroupId', ActiveGroupIdSchema.parse(id))
   })
 
-  ipcMain.handle(IPC.STORE_GET_SIDEBAR_WIDTH, (): number => {
+  safeHandle(IPC.STORE_GET_SIDEBAR_WIDTH, (): number => {
     return store.get('sidebarWidth')
   })
 
-  ipcMain.handle(IPC.STORE_SAVE_SIDEBAR_WIDTH, (_event, width: unknown): void => {
+  safeHandle(IPC.STORE_SAVE_SIDEBAR_WIDTH, (_event, width: unknown): void => {
     store.set('sidebarWidth', SidebarWidthSchema.parse(width))
   })
 
-  ipcMain.handle(IPC.STORE_GET_ROOT_TASK_ORDER, (): Record<string, string[]> => {
+  safeHandle(IPC.STORE_GET_ROOT_TASK_ORDER, (): Record<string, string[]> => {
     return store.get('rootTaskOrder')
   })
 
-  ipcMain.handle(IPC.STORE_SAVE_ROOT_TASK_ORDER, (_event, order: unknown): void => {
+  safeHandle(IPC.STORE_SAVE_ROOT_TASK_ORDER, (_event, order: unknown): void => {
     store.set('rootTaskOrder', RootTaskOrderSchema.parse(order))
   })
 
-  ipcMain.handle(IPC.DIALOG_OPEN_DIRECTORY, async (event): Promise<string | undefined> => {
+  safeHandle(IPC.DIALOG_OPEN_DIRECTORY, async (event): Promise<string | undefined> => {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win) return undefined
     const result = await dialog.showOpenDialog(win, {
@@ -123,7 +127,7 @@ export function registerStoreHandlers(): void {
     return result.filePaths[0]
   })
 
-  ipcMain.handle(
+  safeHandle(
     IPC.GIT_VALIDATE_REPO,
     async (_event, dirPath: unknown): Promise<{ valid: boolean; error?: string }> => {
       const dir = DirPathSchema.parse(dirPath)
@@ -144,7 +148,7 @@ export function registerStoreHandlers(): void {
     }
   )
 
-  ipcMain.handle(
+  safeHandle(
     IPC.GIT_DETECT_BRANCH,
     async (
       _event,
@@ -172,7 +176,7 @@ export function registerStoreHandlers(): void {
     }
   )
 
-  ipcMain.handle(
+  safeHandle(
     IPC.GIT_DIFF_UNCOMMITTED,
     async (_event, dirPath: unknown): Promise<{ diff: string; error?: string }> => {
       const dir = DirPathSchema.parse(dirPath)
@@ -202,7 +206,7 @@ export function registerStoreHandlers(): void {
     }
   )
 
-  ipcMain.handle(
+  safeHandle(
     IPC.GIT_DIFF_BRANCH,
     async (
       _event,
@@ -223,4 +227,12 @@ export function registerStoreHandlers(): void {
       }
     }
   )
+
+  safeHandle(IPC.STORE_GET_COMMENTS, (): Record<string, Comment[]> => {
+    return store.get('comments')
+  })
+
+  safeHandle(IPC.STORE_SAVE_COMMENTS, (_event, comments: unknown): void => {
+    store.set('comments', CommentsPoolSchema.parse(comments))
+  })
 }

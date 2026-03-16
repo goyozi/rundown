@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { TaskList } from './components/TaskList'
 import { TaskDetail } from './components/TaskDetail'
 import { useTaskStore } from './store/task-store'
+import { useCommentStore } from './store/comment-store'
 import { useShallow } from 'zustand/react/shallow'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
@@ -20,10 +21,13 @@ function App(): React.JSX.Element {
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR)
   const isDragging = useRef(false)
 
+  const loadComments = useCommentStore((s) => s.loadComments)
+
   useEffect(() => {
     loadTasks()
+    loadComments()
     window.api.getSidebarWidth().then((w) => setSidebarWidth(w))
-  }, [loadTasks])
+  }, [loadTasks, loadComments])
 
   // Listen for PTY process exits to clean up session state
   useEffect(() => {

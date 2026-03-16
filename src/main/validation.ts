@@ -25,6 +25,16 @@ export const SidebarWidthSchema = z.number().min(100).max(2000)
 export const ActiveGroupIdSchema = z.string()
 export const ThemeSchema = z.enum(['light', 'dark', 'system'])
 
+// Comment validation
+export const CommentSchema = z.object({
+  id: z.string(),
+  filePath: z.string(),
+  changeKey: z.string(),
+  lineNumber: z.number(),
+  body: z.string()
+})
+export const CommentsPoolSchema = z.record(z.string(), z.array(CommentSchema))
+
 // PTY validation
 export const SessionIdSchema = z.string().min(1)
 export const PtyThemeSchema = z.enum(['light', 'dark'])

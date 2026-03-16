@@ -25,8 +25,8 @@ export function TaskDetail(): React.JSX.Element | null {
   const shellCounterRef = useRef(0)
   const {
     selectedTaskId,
-    getTask,
-    getEffectiveDirectory,
+    task,
+    effectiveDir,
     updateDirectory,
     activeSessions,
     startSession,
@@ -34,10 +34,8 @@ export function TaskDetail(): React.JSX.Element | null {
   } = useTaskStore(
     useShallow((s) => ({
       selectedTaskId: s.selectedTaskId,
-      _tasks: s.tasks,
-      _groups: s.groups,
-      getTask: s.getTask,
-      getEffectiveDirectory: s.getEffectiveDirectory,
+      task: s.selectedTaskId ? s.getTask(s.selectedTaskId) : undefined,
+      effectiveDir: s.selectedTaskId ? s.getEffectiveDirectory(s.selectedTaskId) : undefined,
       updateDirectory: s.updateDirectory,
       activeSessions: s.activeSessions,
       startSession: s.startSession,
@@ -52,11 +50,14 @@ export function TaskDetail(): React.JSX.Element | null {
   const [shellTabsPerTask, setShellTabsPerTask] = useState<Record<string, ShellTab[]>>({})
 
   const activeTab = (selectedTaskId && tabPerTask[selectedTaskId]) || 'claude'
-  const setActiveTab = (tab: DetailTab): void => {
-    if (selectedTaskId) {
-      setTabPerTask((prev) => ({ ...prev, [selectedTaskId]: tab }))
-    }
-  }
+  const setActiveTab = useCallback(
+    (tab: DetailTab): void => {
+      if (selectedTaskId) {
+        setTabPerTask((prev) => ({ ...prev, [selectedTaskId]: tab }))
+      }
+    },
+    [selectedTaskId]
+  )
   const shellTabs = (selectedTaskId && shellTabsPerTask[selectedTaskId]) || []
 
   const diffMode: DiffMode = (selectedTaskId && modePerTask[selectedTaskId]) || 'uncommitted'
@@ -103,6 +104,89 @@ export function TaskDetail(): React.JSX.Element | null {
     return cleanup
   }, [])
 
+  // Keep refs to avoid stale closures across async boundaries
+  const taskIdRef = useRef(selectedTaskId)
+  taskIdRef.current = selectedTaskId
+
+  const handlePickDirectory = useCallback(async (): Promise<void> => {
+    const currentTaskId = taskIdRef.current
+    if (!currentTaskId || activeSessions.has(currentTaskId)) return
+    const dir = await window.api.openDirectory()
+    if (dir) {
+      const result = await window.api.validateRepo(dir)
+      // Re-read taskId after awaits to avoid stale closure
+      const freshTaskId = taskIdRef.current
+      if (!freshTaskId) return
+      if (result.valid) {
+        setDirError(null)
+        updateDirectory(freshTaskId, dir)
+      } else {
+        setDirError(result.error ?? 'Invalid directory')
+      }
+    }
+  }, [activeSessions, updateDirectory])
+
+  const handleStartSession = useCallback(async (): Promise<void> => {
+    const currentTaskId = taskIdRef.current
+    if (!currentTaskId || isStarting) return
+    const freshDir = useTaskStore.getState().getEffectiveDirectory(currentTaskId)
+    if (!freshDir) return
+    setIsStarting(true)
+    try {
+      const result = await window.api.ptySpawn(currentTaskId, freshDir, resolved)
+      if (result.success) {
+        startSession(currentTaskId)
+      }
+    } finally {
+      setIsStarting(false)
+    }
+  }, [isStarting, resolved, startSession])
+
+  const handleStopSession = useCallback(async (): Promise<void> => {
+    const currentTaskId = taskIdRef.current
+    if (!currentTaskId) return
+    await window.api.ptyKill(currentTaskId)
+    stopSession(currentTaskId)
+  }, [stopSession])
+
+  const handleAddShellTab = useCallback(async (): Promise<void> => {
+    const currentTaskId = taskIdRef.current
+    if (!currentTaskId) return
+    const freshDir = useTaskStore.getState().getEffectiveDirectory(currentTaskId)
+    if (!freshDir) return
+    shellCounterRef.current++
+    const id = `shell-${shellCounterRef.current}`
+    const sessionId = `${currentTaskId}:${id}`
+    const currentShellTabs = shellTabsPerTask[currentTaskId] || []
+    const num = currentShellTabs.length + 1
+    const tab: ShellTab = { id, label: `Shell ${num}`, sessionId }
+
+    setShellTabsPerTask((prev) => ({
+      ...prev,
+      [currentTaskId]: [...(prev[currentTaskId] || []), tab]
+    }))
+    setActiveTab(`shell:${id}`)
+
+    await window.api.ptySpawnShell(sessionId, freshDir, resolved)
+  }, [resolved, shellTabsPerTask, setActiveTab])
+
+  const handleCloseShellTab = useCallback(
+    async (shellTab: ShellTab): Promise<void> => {
+      if (!selectedTaskId) return
+      await window.api.ptyKill(shellTab.sessionId)
+
+      setShellTabsPerTask((prev) => ({
+        ...prev,
+        [selectedTaskId]: (prev[selectedTaskId] || []).filter((t) => t.id !== shellTab.id)
+      }))
+
+      if (activeTab === `shell:${shellTab.id}`) {
+        setActiveTab('claude')
+      }
+    },
+    [selectedTaskId, activeTab, setActiveTab]
+  )
+
   if (!selectedTaskId) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -131,76 +215,11 @@ export function TaskDetail(): React.JSX.Element | null {
     )
   }
 
-  const task = getTask(selectedTaskId)
   if (!task) return null
 
-  const effectiveDir = getEffectiveDirectory(task.id)
   const isDone = task.state === 'done'
   const isInherited = !task.directory && !!effectiveDir
   const sessionActive = activeSessions.has(task.id)
-
-  const handlePickDirectory = async (): Promise<void> => {
-    if (sessionActive) return
-    const dir = await window.api.openDirectory()
-    if (dir) {
-      const result = await window.api.validateRepo(dir)
-      if (result.valid) {
-        setDirError(null)
-        updateDirectory(task.id, dir)
-      } else {
-        setDirError(result.error ?? 'Invalid directory')
-      }
-    }
-  }
-
-  const handleStartSession = async (): Promise<void> => {
-    if (!effectiveDir || isStarting) return
-    setIsStarting(true)
-    try {
-      const result = await window.api.ptySpawn(task.id, effectiveDir, resolved)
-      if (result.success) {
-        startSession(task.id)
-      }
-    } finally {
-      setIsStarting(false)
-    }
-  }
-
-  const handleStopSession = async (): Promise<void> => {
-    await window.api.ptyKill(task.id)
-    stopSession(task.id)
-  }
-
-  const handleAddShellTab = async (): Promise<void> => {
-    if (!effectiveDir || !selectedTaskId) return
-    shellCounterRef.current++
-    const id = `shell-${shellCounterRef.current}`
-    const sessionId = `${selectedTaskId}:${id}`
-    const num = shellTabs.length + 1
-    const tab: ShellTab = { id, label: `Shell ${num}`, sessionId }
-
-    setShellTabsPerTask((prev) => ({
-      ...prev,
-      [selectedTaskId]: [...(prev[selectedTaskId] || []), tab]
-    }))
-    setActiveTab(`shell:${id}`)
-
-    await window.api.ptySpawnShell(sessionId, effectiveDir, resolved)
-  }
-
-  const handleCloseShellTab = async (shellTab: ShellTab): Promise<void> => {
-    if (!selectedTaskId) return
-    await window.api.ptyKill(shellTab.sessionId)
-
-    setShellTabsPerTask((prev) => ({
-      ...prev,
-      [selectedTaskId]: (prev[selectedTaskId] || []).filter((t) => t.id !== shellTab.id)
-    }))
-
-    if (activeTab === `shell:${shellTab.id}`) {
-      setActiveTab('claude')
-    }
-  }
 
   return (
     <div className="flex flex-col h-full" data-testid="task-detail">

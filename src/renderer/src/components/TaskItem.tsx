@@ -87,7 +87,6 @@ export function TaskItem({
   } = useTaskStore(
     useShallow((s) => ({
       selectedTaskId: s.selectedTaskId,
-      _tasks: s.tasks, // trigger re-renders for getChildren/getDepth
       selectTask: s.selectTask,
       updateDescription: s.updateDescription,
       deleteTask: s.deleteTask,

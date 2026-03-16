@@ -9,6 +9,7 @@ import {
   PtyWriteDataSchema,
   PtyResizeSchema
 } from './validation'
+import { IPC } from '../shared/channels'
 
 // Denylist of env vars that should not leak into PTY sessions.
 // Electron-specific vars could allow escaping the sandbox, and
@@ -75,109 +76,91 @@ export function killAllSessions(): void {
   persistSessionPids()
 }
 
+function spawnSession(
+  id: string,
+  cwd: string,
+  theme: string,
+  shell: string,
+  getMainWindow: () => BrowserWindow | null
+): { success: boolean; error?: string } {
+  if (sessions.has(id)) {
+    return { success: false, error: 'Session already exists' }
+  }
+
+  // COLORFGBG hints to CLI apps about the terminal background:
+  // "0;15" = dark fg on light bg (light mode), "15;0" = light fg on dark bg (dark mode)
+  const colorfgbg = theme === 'light' ? '0;15' : '15;0'
+
+  try {
+    const ptyProcess = pty.spawn(shell, [], {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd,
+      env: buildSafeEnv({ COLORFGBG: colorfgbg })
+    })
+
+    sessions.set(id, ptyProcess)
+    persistSessionPids()
+
+    ptyProcess.onData((data) => {
+      const win = getMainWindow()
+      if (win && !win.isDestroyed()) {
+        win.webContents.send(IPC.PTY_DATA, id, data)
+      }
+    })
+
+    ptyProcess.onExit(() => {
+      sessions.delete(id)
+      persistSessionPids()
+      const win = getMainWindow()
+      if (win && !win.isDestroyed()) {
+        win.webContents.send(IPC.PTY_EXIT, id)
+      }
+    })
+
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
 export function registerPtyHandlers(getMainWindow: () => BrowserWindow | null): void {
   cleanupOrphanedSessions()
 
-  ipcMain.handle('pty:spawn', (_event, taskId: unknown, cwd: unknown, theme: unknown = 'dark') => {
-    const id = SessionIdSchema.parse(taskId)
-    const cwdStr = CwdSchema.parse(cwd)
-    const themeStr = PtyThemeSchema.parse(theme)
-
-    if (sessions.has(id)) {
-      return { success: false, error: 'Session already active for this task' }
-    }
-
-    const claudeBin = process.env.CLAUDE_BIN ?? 'claude'
-    const shell = claudeBin
-
-    // COLORFGBG hints to CLI apps about the terminal background:
-    // "0;15" = dark fg on light bg (light mode), "15;0" = light fg on dark bg (dark mode)
-    const colorfgbg = themeStr === 'light' ? '0;15' : '15;0'
-
-    try {
-      const ptyProcess = pty.spawn(shell, [], {
-        name: 'xterm-256color',
-        cols: 80,
-        rows: 24,
-        cwd: cwdStr,
-        env: buildSafeEnv({ COLORFGBG: colorfgbg })
-      })
-
-      sessions.set(id, ptyProcess)
-      persistSessionPids()
-
-      ptyProcess.onData((data) => {
-        const win = getMainWindow()
-        if (win && !win.isDestroyed()) {
-          win.webContents.send('pty:data', id, data)
-        }
-      })
-
-      ptyProcess.onExit(() => {
-        sessions.delete(id)
-        persistSessionPids()
-        const win = getMainWindow()
-        if (win && !win.isDestroyed()) {
-          win.webContents.send('pty:exit', id)
-        }
-      })
-
-      return { success: true }
-    } catch (err) {
-      return { success: false, error: String(err) }
-    }
-  })
-
   ipcMain.handle(
-    'pty:spawn-shell',
-    (_event, sessionId: unknown, cwd: unknown, theme: unknown = 'dark') => {
-      const id = SessionIdSchema.parse(sessionId)
+    IPC.PTY_SPAWN,
+    (
+      _event,
+      taskId: unknown,
+      cwd: unknown,
+      theme: unknown = 'dark'
+    ): { success: boolean; error?: string } => {
+      const id = SessionIdSchema.parse(taskId)
       const cwdStr = CwdSchema.parse(cwd)
       const themeStr = PtyThemeSchema.parse(theme)
-
-      if (sessions.has(id)) {
-        return { success: false, error: 'Session already exists' }
-      }
-
-      const shell = process.env.SHELL_BIN ?? process.env.SHELL ?? '/bin/zsh'
-      const colorfgbg = themeStr === 'light' ? '0;15' : '15;0'
-
-      try {
-        const ptyProcess = pty.spawn(shell, [], {
-          name: 'xterm-256color',
-          cols: 80,
-          rows: 24,
-          cwd: cwdStr,
-          env: buildSafeEnv({ COLORFGBG: colorfgbg })
-        })
-
-        sessions.set(id, ptyProcess)
-        persistSessionPids()
-
-        ptyProcess.onData((data) => {
-          const win = getMainWindow()
-          if (win && !win.isDestroyed()) {
-            win.webContents.send('pty:data', id, data)
-          }
-        })
-
-        ptyProcess.onExit(() => {
-          sessions.delete(id)
-          persistSessionPids()
-          const win = getMainWindow()
-          if (win && !win.isDestroyed()) {
-            win.webContents.send('pty:exit', id)
-          }
-        })
-
-        return { success: true }
-      } catch (err) {
-        return { success: false, error: String(err) }
-      }
+      const claudeBin = process.env.CLAUDE_BIN ?? 'claude'
+      return spawnSession(id, cwdStr, themeStr, claudeBin, getMainWindow)
     }
   )
 
-  ipcMain.handle('pty:write', (_event, taskId: unknown, data: unknown) => {
+  ipcMain.handle(
+    IPC.PTY_SPAWN_SHELL,
+    (
+      _event,
+      sessionId: unknown,
+      cwd: unknown,
+      theme: unknown = 'dark'
+    ): { success: boolean; error?: string } => {
+      const id = SessionIdSchema.parse(sessionId)
+      const cwdStr = CwdSchema.parse(cwd)
+      const themeStr = PtyThemeSchema.parse(theme)
+      const shell = process.env.SHELL_BIN ?? process.env.SHELL ?? '/bin/zsh'
+      return spawnSession(id, cwdStr, themeStr, shell, getMainWindow)
+    }
+  )
+
+  ipcMain.handle(IPC.PTY_WRITE, (_event, taskId: unknown, data: unknown): void => {
     const id = SessionIdSchema.parse(taskId)
     const str = PtyWriteDataSchema.parse(data)
     const proc = sessions.get(id)
@@ -186,7 +169,7 @@ export function registerPtyHandlers(getMainWindow: () => BrowserWindow | null): 
     }
   })
 
-  ipcMain.handle('pty:resize', (_event, taskId: unknown, cols: unknown, rows: unknown) => {
+  ipcMain.handle(IPC.PTY_RESIZE, (_event, taskId: unknown, cols: unknown, rows: unknown): void => {
     const { cols: c, rows: r } = PtyResizeSchema.parse({ cols, rows })
     const id = SessionIdSchema.parse(taskId)
     const proc = sessions.get(id)
@@ -195,7 +178,7 @@ export function registerPtyHandlers(getMainWindow: () => BrowserWindow | null): 
     }
   })
 
-  ipcMain.handle('pty:kill', (_event, taskId: unknown) => {
+  ipcMain.handle(IPC.PTY_KILL, (_event, taskId: unknown): void => {
     const id = SessionIdSchema.parse(taskId)
     const proc = sessions.get(id)
     if (proc) {

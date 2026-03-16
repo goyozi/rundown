@@ -7,7 +7,9 @@ import icon from '../../resources/icon.png?asset'
 import { registerStoreHandlers, getWindowState, saveWindowState } from './store'
 import { registerPtyHandlers, killAllSessions } from './pty'
 import { ThemeSchema } from './validation'
+import { IPC } from '../shared/channels'
 
+// ESM has no __dirname — polyfill it from import.meta.url so join() calls below work
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 let mainWindow: BrowserWindow | null = null
@@ -118,7 +120,7 @@ app.whenReady().then(() => {
   registerStoreHandlers()
   registerPtyHandlers(() => mainWindow)
 
-  ipcMain.handle('theme:set', (_event, theme: unknown) => {
+  ipcMain.handle(IPC.THEME_SET, (_event, theme: unknown) => {
     nativeTheme.themeSource = ThemeSchema.parse(theme)
   })
 

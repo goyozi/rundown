@@ -1,47 +1,49 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type { Task, TaskGroup } from '../shared/types'
+import { IPC } from '../shared/channels'
 
 const api = {
-  getTasks: () => ipcRenderer.invoke('store:get-tasks'),
-  saveTasks: (tasks: unknown[]) => ipcRenderer.invoke('store:save-tasks', tasks),
-  getGroups: () => ipcRenderer.invoke('store:get-groups'),
-  saveGroups: (groups: unknown[]) => ipcRenderer.invoke('store:save-groups', groups),
-  getActiveGroupId: () => ipcRenderer.invoke('store:get-active-group-id'),
-  saveActiveGroupId: (id: string) => ipcRenderer.invoke('store:save-active-group-id', id),
-  getSidebarWidth: () => ipcRenderer.invoke('store:get-sidebar-width'),
-  saveSidebarWidth: (width: number) => ipcRenderer.invoke('store:save-sidebar-width', width),
-  getRootTaskOrder: () => ipcRenderer.invoke('store:get-root-task-order'),
+  getTasks: () => ipcRenderer.invoke(IPC.STORE_GET_TASKS),
+  saveTasks: (tasks: Task[]) => ipcRenderer.invoke(IPC.STORE_SAVE_TASKS, tasks),
+  getGroups: () => ipcRenderer.invoke(IPC.STORE_GET_GROUPS),
+  saveGroups: (groups: TaskGroup[]) => ipcRenderer.invoke(IPC.STORE_SAVE_GROUPS, groups),
+  getActiveGroupId: () => ipcRenderer.invoke(IPC.STORE_GET_ACTIVE_GROUP_ID),
+  saveActiveGroupId: (id: string) => ipcRenderer.invoke(IPC.STORE_SAVE_ACTIVE_GROUP_ID, id),
+  getSidebarWidth: () => ipcRenderer.invoke(IPC.STORE_GET_SIDEBAR_WIDTH),
+  saveSidebarWidth: (width: number) => ipcRenderer.invoke(IPC.STORE_SAVE_SIDEBAR_WIDTH, width),
+  getRootTaskOrder: () => ipcRenderer.invoke(IPC.STORE_GET_ROOT_TASK_ORDER),
   saveRootTaskOrder: (order: Record<string, string[]>) =>
-    ipcRenderer.invoke('store:save-root-task-order', order),
-  openDirectory: () => ipcRenderer.invoke('dialog:open-directory'),
-  validateRepo: (dirPath: string) => ipcRenderer.invoke('git:validate-repo', dirPath),
-  detectBranch: (dirPath: string) => ipcRenderer.invoke('git:detect-branch', dirPath),
-  diffUncommitted: (dirPath: string) => ipcRenderer.invoke('git:diff-uncommitted', dirPath),
+    ipcRenderer.invoke(IPC.STORE_SAVE_ROOT_TASK_ORDER, order),
+  openDirectory: () => ipcRenderer.invoke(IPC.DIALOG_OPEN_DIRECTORY),
+  validateRepo: (dirPath: string) => ipcRenderer.invoke(IPC.GIT_VALIDATE_REPO, dirPath),
+  detectBranch: (dirPath: string) => ipcRenderer.invoke(IPC.GIT_DETECT_BRANCH, dirPath),
+  diffUncommitted: (dirPath: string) => ipcRenderer.invoke(IPC.GIT_DIFF_UNCOMMITTED, dirPath),
   diffBranch: (dirPath: string, mainBranch: string) =>
-    ipcRenderer.invoke('git:diff-branch', dirPath, mainBranch),
+    ipcRenderer.invoke(IPC.GIT_DIFF_BRANCH, dirPath, mainBranch),
 
   // Theme
-  setNativeTheme: (theme: 'light' | 'dark' | 'system') => ipcRenderer.invoke('theme:set', theme),
+  setNativeTheme: (theme: 'light' | 'dark' | 'system') => ipcRenderer.invoke(IPC.THEME_SET, theme),
 
   // PTY
   ptySpawn: (taskId: string, cwd: string, theme: 'light' | 'dark' = 'dark') =>
-    ipcRenderer.invoke('pty:spawn', taskId, cwd, theme),
+    ipcRenderer.invoke(IPC.PTY_SPAWN, taskId, cwd, theme),
   ptySpawnShell: (sessionId: string, cwd: string, theme: 'light' | 'dark' = 'dark') =>
-    ipcRenderer.invoke('pty:spawn-shell', sessionId, cwd, theme),
-  ptyWrite: (taskId: string, data: string) => ipcRenderer.invoke('pty:write', taskId, data),
+    ipcRenderer.invoke(IPC.PTY_SPAWN_SHELL, sessionId, cwd, theme),
+  ptyWrite: (taskId: string, data: string) => ipcRenderer.invoke(IPC.PTY_WRITE, taskId, data),
   ptyResize: (taskId: string, cols: number, rows: number) =>
-    ipcRenderer.invoke('pty:resize', taskId, cols, rows),
-  ptyKill: (taskId: string) => ipcRenderer.invoke('pty:kill', taskId),
+    ipcRenderer.invoke(IPC.PTY_RESIZE, taskId, cols, rows),
+  ptyKill: (taskId: string) => ipcRenderer.invoke(IPC.PTY_KILL, taskId),
   onPtyData: (callback: (taskId: string, data: string) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, taskId: string, data: string): void =>
       callback(taskId, data)
-    ipcRenderer.on('pty:data', handler)
-    return () => ipcRenderer.removeListener('pty:data', handler)
+    ipcRenderer.on(IPC.PTY_DATA, handler)
+    return () => ipcRenderer.removeListener(IPC.PTY_DATA, handler)
   },
   onPtyExit: (callback: (taskId: string) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, taskId: string): void => callback(taskId)
-    ipcRenderer.on('pty:exit', handler)
-    return () => ipcRenderer.removeListener('pty:exit', handler)
+    ipcRenderer.on(IPC.PTY_EXIT, handler)
+    return () => ipcRenderer.removeListener(IPC.PTY_EXIT, handler)
   }
 }
 

@@ -13,6 +13,7 @@ import {
   DirPathSchema,
   BranchNameSchema
 } from './validation'
+import { IPC } from '../shared/channels'
 
 interface WindowState {
   x?: number
@@ -109,47 +110,47 @@ export function saveWindowState(state: WindowState): void {
 }
 
 export function registerStoreHandlers(): void {
-  ipcMain.handle('store:get-tasks', () => {
+  ipcMain.handle(IPC.STORE_GET_TASKS, (): Task[] => {
     return store.get('tasks')
   })
 
-  ipcMain.handle('store:save-tasks', (_event, tasks: unknown) => {
+  ipcMain.handle(IPC.STORE_SAVE_TASKS, (_event, tasks: unknown): void => {
     store.set('tasks', TasksArraySchema.parse(tasks) as Task[])
   })
 
-  ipcMain.handle('store:get-groups', () => {
+  ipcMain.handle(IPC.STORE_GET_GROUPS, (): TaskGroup[] => {
     return store.get('groups')
   })
 
-  ipcMain.handle('store:save-groups', (_event, groups: unknown) => {
+  ipcMain.handle(IPC.STORE_SAVE_GROUPS, (_event, groups: unknown): void => {
     store.set('groups', GroupsArraySchema.parse(groups) as TaskGroup[])
   })
 
-  ipcMain.handle('store:get-active-group-id', () => {
+  ipcMain.handle(IPC.STORE_GET_ACTIVE_GROUP_ID, (): string => {
     return store.get('activeGroupId')
   })
 
-  ipcMain.handle('store:save-active-group-id', (_event, id: unknown) => {
+  ipcMain.handle(IPC.STORE_SAVE_ACTIVE_GROUP_ID, (_event, id: unknown): void => {
     store.set('activeGroupId', ActiveGroupIdSchema.parse(id))
   })
 
-  ipcMain.handle('store:get-sidebar-width', () => {
+  ipcMain.handle(IPC.STORE_GET_SIDEBAR_WIDTH, (): number => {
     return store.get('sidebarWidth')
   })
 
-  ipcMain.handle('store:save-sidebar-width', (_event, width: unknown) => {
+  ipcMain.handle(IPC.STORE_SAVE_SIDEBAR_WIDTH, (_event, width: unknown): void => {
     store.set('sidebarWidth', SidebarWidthSchema.parse(width))
   })
 
-  ipcMain.handle('store:get-root-task-order', () => {
+  ipcMain.handle(IPC.STORE_GET_ROOT_TASK_ORDER, (): Record<string, string[]> => {
     return store.get('rootTaskOrder')
   })
 
-  ipcMain.handle('store:save-root-task-order', (_event, order: unknown) => {
+  ipcMain.handle(IPC.STORE_SAVE_ROOT_TASK_ORDER, (_event, order: unknown): void => {
     store.set('rootTaskOrder', RootTaskOrderSchema.parse(order))
   })
 
-  ipcMain.handle('dialog:open-directory', async (event) => {
+  ipcMain.handle(IPC.DIALOG_OPEN_DIRECTORY, async (event): Promise<string | undefined> => {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win) return undefined
     const result = await dialog.showOpenDialog(win, {
@@ -160,7 +161,7 @@ export function registerStoreHandlers(): void {
   })
 
   ipcMain.handle(
-    'git:validate-repo',
+    IPC.GIT_VALIDATE_REPO,
     async (_event, dirPath: unknown): Promise<{ valid: boolean; error?: string }> => {
       const dir = DirPathSchema.parse(dirPath)
       if (!isAbsolute(dir)) return { valid: false, error: 'Path must be absolute' }
@@ -181,7 +182,7 @@ export function registerStoreHandlers(): void {
   )
 
   ipcMain.handle(
-    'git:detect-branch',
+    IPC.GIT_DETECT_BRANCH,
     async (
       _event,
       dirPath: unknown
@@ -209,7 +210,7 @@ export function registerStoreHandlers(): void {
   )
 
   ipcMain.handle(
-    'git:diff-uncommitted',
+    IPC.GIT_DIFF_UNCOMMITTED,
     async (_event, dirPath: unknown): Promise<{ diff: string; error?: string }> => {
       const dir = DirPathSchema.parse(dirPath)
       try {
@@ -239,7 +240,7 @@ export function registerStoreHandlers(): void {
   )
 
   ipcMain.handle(
-    'git:diff-branch',
+    IPC.GIT_DIFF_BRANCH,
     async (
       _event,
       dirPath: unknown,

@@ -1,25 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import {
-  FolderOpen,
-  Terminal,
-  CheckCircle2,
-  ListTodo,
-  AlertCircle,
-  Play,
-  Square,
-  Loader2,
-  Code2,
-  BotMessageSquare,
-  Plus,
-  X
-} from 'lucide-react'
+import { ListTodo, Terminal, AlertCircle, BotMessageSquare } from 'lucide-react'
 import { useTaskStore } from '@/store/task-store'
 import { useShallow } from 'zustand/react/shallow'
 import { useTheme } from '@/hooks/use-theme'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Dialog,
   DialogContent,
@@ -30,16 +15,11 @@ import {
 } from '@/components/ui/dialog'
 import { TerminalPanel } from './TerminalPanel'
 import { ReviewPanel } from './ReviewPanel'
-import { cn } from '@/lib/utils'
+import { TaskHeader } from './TaskHeader'
+import { TabBar } from './TabBar'
+import type { DetailTab, ShellTab } from './TabBar'
 
-type DetailTab = 'claude' | 'review' | `shell:${string}`
 type DiffMode = 'uncommitted' | 'branch'
-
-interface ShellTab {
-  id: string
-  label: string
-  sessionId: string
-}
 
 export function TaskDetail(): React.JSX.Element | null {
   const shellCounterRef = useRef(0)
@@ -54,7 +34,6 @@ export function TaskDetail(): React.JSX.Element | null {
   } = useTaskStore(
     useShallow((s) => ({
       selectedTaskId: s.selectedTaskId,
-      // tasks & groups included to trigger re-renders for derived getters (getTask, getEffectiveDirectory)
       _tasks: s.tasks,
       _groups: s.groups,
       getTask: s.getTask,
@@ -93,7 +72,6 @@ export function TaskDetail(): React.JSX.Element | null {
   // Clean up shell tab when its PTY process exits naturally (e.g. user types `exit`)
   useEffect(() => {
     const cleanup = window.api.onPtyExit((exitedSessionId) => {
-      // Shell session IDs are formatted as "taskId:shell-N"
       if (!exitedSessionId.includes(':shell-')) return
 
       setShellTabsPerTask((prev) => {
@@ -108,7 +86,6 @@ export function TaskDetail(): React.JSX.Element | null {
         return updated
       })
 
-      // Switch away from the closed tab if it was active
       setTabPerTask((prev) => {
         const updated = { ...prev }
         for (const [taskId, tab] of Object.entries(updated)) {
@@ -161,7 +138,6 @@ export function TaskDetail(): React.JSX.Element | null {
   const isDone = task.state === 'done'
   const isInherited = !task.directory && !!effectiveDir
   const sessionActive = activeSessions.has(task.id)
-  const isInProgress = sessionActive
 
   const handlePickDirectory = async (): Promise<void> => {
     if (sessionActive) return
@@ -221,213 +197,36 @@ export function TaskDetail(): React.JSX.Element | null {
       [selectedTaskId]: (prev[selectedTaskId] || []).filter((t) => t.id !== shellTab.id)
     }))
 
-    // Switch away if this was the active tab
     if (activeTab === `shell:${shellTab.id}`) {
       setActiveTab('claude')
     }
   }
 
-  const stateBadge = isInProgress ? (
-    <Badge
-      variant="outline"
-      className="shrink-0 text-[10px] uppercase tracking-wider font-medium bg-primary/10 text-primary border-primary/20"
-    >
-      <Loader2 className="size-3 mr-0.5 animate-spin" />
-      In Progress
-    </Badge>
-  ) : isDone ? (
-    <Badge
-      variant="secondary"
-      className="shrink-0 text-[10px] uppercase tracking-wider font-medium bg-success/10 text-success border-success/20"
-    >
-      <CheckCircle2 className="size-3 mr-0.5" />
-      Done
-    </Badge>
-  ) : (
-    <Badge
-      variant="outline"
-      className="shrink-0 text-[10px] uppercase tracking-wider font-medium text-muted-foreground"
-    >
-      Idle
-    </Badge>
-  )
-
   return (
     <div className="flex flex-col h-full" data-testid="task-detail">
-      {/* Task header */}
-      <div className="px-6 pt-5 pb-4 drag-region">
-        <div className="no-drag animate-fade-in-up">
-          <div className="flex items-start gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2.5 mb-2">
-                <h2
-                  className={cn(
-                    'text-lg font-semibold tracking-tight truncate',
-                    isDone && 'line-through text-muted-foreground'
-                  )}
-                  data-testid="task-detail-title"
-                >
-                  {task.description}
-                </h2>
-                {stateBadge}
-              </div>
-
-              {/* Directory display */}
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-fade-in-up-delay">
-                {effectiveDir ? (
-                  <>
-                    <FolderOpen className="size-3.5 shrink-0 text-muted-foreground/50" />
-                    <button
-                      className={cn(
-                        'truncate max-w-md font-mono text-[11px] bg-muted/50 px-1.5 py-0.5 rounded transition-colors',
-                        sessionActive ? 'cursor-default' : 'hover:bg-muted cursor-pointer'
-                      )}
-                      onClick={handlePickDirectory}
-                      data-testid="directory-display"
-                    >
-                      {effectiveDir}
-                    </button>
-                    {isInherited && (
-                      <span className="italic text-muted-foreground/40 text-[11px]">inherited</span>
-                    )}
-                  </>
-                ) : (
-                  <button
-                    className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground cursor-pointer transition-colors"
-                    onClick={handlePickDirectory}
-                    data-testid="set-directory"
-                  >
-                    <FolderOpen className="size-3.5 shrink-0" />
-                    <span>Set directory...</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Session controls */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              {sessionActive ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleStopSession}
-                      className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                      data-testid="stop-session"
-                    >
-                      <Square className="size-3.5 mr-1.5 fill-current" />
-                      Stop Session
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Kill the active Claude Code session</TooltipContent>
-                </Tooltip>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={handleStartSession}
-                      disabled={!effectiveDir || isStarting}
-                      data-testid="start-session"
-                    >
-                      {isStarting ? (
-                        <Loader2 className="size-3.5 mr-1.5 animate-spin" />
-                      ) : (
-                        <Play className="size-3.5 mr-1.5 fill-current" />
-                      )}
-                      Start Session
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {effectiveDir
-                      ? 'Launch Claude Code in the task directory'
-                      : 'Assign a directory first'}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <TaskHeader
+        task={task}
+        effectiveDir={effectiveDir}
+        isInherited={isInherited}
+        sessionActive={sessionActive}
+        isDone={isDone}
+        isStarting={isStarting}
+        onPickDirectory={handlePickDirectory}
+        onStartSession={handleStartSession}
+        onStopSession={handleStopSession}
+      />
 
       <Separator />
 
-      {/* Tab bar - show when session active or directory available for review */}
-      {(sessionActive || effectiveDir) && (
-        <div className="flex items-center border-b border-border/50 bg-muted/10 px-4">
-          <button
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors -mb-px',
-              activeTab === 'claude'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            )}
-            onClick={() => setActiveTab('claude')}
-            data-testid="tab-terminal"
-          >
-            <BotMessageSquare className="size-3.5" />
-            Claude
-          </button>
-          {effectiveDir && (
-            <button
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors -mb-px',
-                activeTab === 'review'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              )}
-              onClick={() => setActiveTab('review')}
-              data-testid="tab-review"
-            >
-              <Code2 className="size-3.5" />
-              Review
-            </button>
-          )}
-          {shellTabs.map((shellTab) => (
-            <div
-              key={shellTab.id}
-              className={cn(
-                'group/tab flex items-center -mb-px border-b-2 transition-colors',
-                activeTab === `shell:${shellTab.id}`
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <button
-                className="flex items-center gap-1.5 pl-3 pr-1 py-2 text-xs font-medium"
-                onClick={() => setActiveTab(`shell:${shellTab.id}`)}
-                data-testid={`tab-${shellTab.id}`}
-              >
-                <Terminal className="size-3.5" />
-                {shellTab.label}
-              </button>
-              <button
-                className="p-0.5 mr-1 rounded opacity-0 group-hover/tab:opacity-100 hover:bg-muted text-muted-foreground/50 hover:text-foreground transition-all"
-                onClick={() => handleCloseShellTab(shellTab)}
-                data-testid={`close-${shellTab.id}`}
-              >
-                <X className="size-3" />
-              </button>
-            </div>
-          ))}
-          {effectiveDir && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  className="flex items-center justify-center size-6 ml-1 rounded hover:bg-muted text-muted-foreground/50 hover:text-foreground transition-colors"
-                  onClick={handleAddShellTab}
-                  data-testid="add-shell-tab"
-                >
-                  <Plus className="size-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Open a shell terminal</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-      )}
+      <TabBar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        shellTabs={shellTabs}
+        effectiveDir={effectiveDir}
+        sessionActive={sessionActive}
+        onAddShellTab={handleAddShellTab}
+        onCloseShellTab={handleCloseShellTab}
+      />
 
       {/* Content area */}
       {activeTab === 'review' && effectiveDir ? (

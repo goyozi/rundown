@@ -1,22 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
-import {
-  Plus,
-  ListTodo,
-  Sun,
-  Moon,
-  Monitor,
-  ChevronDown,
-  Trash2,
-  FolderPlus,
-  FolderOpen,
-  Settings
-} from 'lucide-react'
+import { useState } from 'react'
+import { Plus, ListTodo, FolderOpen, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Dialog,
   DialogContent,
@@ -27,10 +15,10 @@ import {
 } from '@/components/ui/dialog'
 import { useTaskStore } from '@/store/task-store'
 import { useShallow } from 'zustand/react/shallow'
-import { useTheme } from '@/hooks/use-theme'
 import { DndTaskTree } from './DndTaskTree'
-
-const themeLabel = { light: 'Light', dark: 'Dark', system: 'System' } as const
+import { GroupSelector } from './GroupSelector'
+import { SettingsDialog } from './SettingsDialog'
+import { GroupDeleteConfirmDialog } from './GroupDeleteConfirmDialog'
 
 export function TaskList(): React.JSX.Element {
   const {
@@ -39,9 +27,7 @@ export function TaskList(): React.JSX.Element {
     groups,
     activeGroupId,
     getActiveGroup,
-    addGroup,
     removeGroup,
-    setActiveGroup,
     getGroupTaskCount,
     updateGroupDirectory,
     activeSessions,
@@ -54,9 +40,7 @@ export function TaskList(): React.JSX.Element {
       groups: s.groups,
       activeGroupId: s.activeGroupId,
       getActiveGroup: s.getActiveGroup,
-      addGroup: s.addGroup,
       removeGroup: s.removeGroup,
-      setActiveGroup: s.setActiveGroup,
       getGroupTaskCount: s.getGroupTaskCount,
       updateGroupDirectory: s.updateGroupDirectory,
       activeSessions: s.activeSessions,
@@ -66,38 +50,18 @@ export function TaskList(): React.JSX.Element {
   )
   const [newTaskDescription, setNewTaskDescription] = useState('')
   const [groupSelectorOpen, setGroupSelectorOpen] = useState(false)
-  const [isCreatingGroup, setIsCreatingGroup] = useState(false)
-  const [newGroupName, setNewGroupName] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [groupDirError, setGroupDirError] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const { mode, setTheme } = useTheme()
-  const newGroupInputRef = useRef<HTMLInputElement>(null)
 
   const rootTasks = getRootTasks()
   const activeGroup = getActiveGroup()
-
-  useEffect(() => {
-    if (isCreatingGroup && newGroupInputRef.current) {
-      newGroupInputRef.current.focus()
-    }
-  }, [isCreatingGroup])
 
   const handleAddTask = (): void => {
     const trimmed = newTaskDescription.trim()
     if (trimmed) {
       addTask(trimmed)
       setNewTaskDescription('')
-    }
-  }
-
-  const handleCreateGroup = (): void => {
-    const trimmed = newGroupName.trim()
-    if (trimmed) {
-      addGroup(trimmed)
-      setNewGroupName('')
-      setIsCreatingGroup(false)
-      setGroupSelectorOpen(false)
     }
   }
 
@@ -132,7 +96,9 @@ export function TaskList(): React.JSX.Element {
     }
   }
 
-  const deleteConfirmGroup = deleteConfirm ? groups.find((g) => g.id === deleteConfirm) : null
+  const deleteConfirmGroup = deleteConfirm
+    ? (groups.find((g) => g.id === deleteConfirm) ?? null)
+    : null
   const deleteConfirmTaskCount = deleteConfirm ? getGroupTaskCount(deleteConfirm) : 0
   const deleteConfirmHasSessions = deleteConfirm
     ? tasks.filter((t) => t.groupId === deleteConfirm).some((t) => activeSessions.has(t.id))
@@ -147,113 +113,11 @@ export function TaskList(): React.JSX.Element {
             <ListTodo className="size-3.5 text-primary" />
           </div>
 
-          <Popover open={groupSelectorOpen} onOpenChange={setGroupSelectorOpen}>
-            <PopoverTrigger asChild>
-              <button
-                className="flex items-center gap-1 text-sm font-semibold tracking-tight hover:text-primary/80 transition-colors cursor-pointer rounded-sm px-1 -mx-1 py-0.5 hover:bg-muted/60"
-                data-testid="group-selector-trigger"
-              >
-                <span className="truncate max-w-[140px]">{activeGroup?.name ?? 'Rundown'}</span>
-                <ChevronDown className="size-3 text-muted-foreground shrink-0" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              sideOffset={8}
-              className="w-64 p-0"
-              data-testid="group-selector-dropdown"
-            >
-              <div className="py-1.5">
-                <div className="px-3 py-1.5">
-                  <p className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">
-                    Groups
-                  </p>
-                </div>
-                <div className="max-h-[240px] overflow-y-auto">
-                  {groups.map((group) => {
-                    const isActive = group.id === activeGroupId
-                    const taskCount = getGroupTaskCount(group.id)
-                    const isLastGroup = groups.length <= 1
-                    return (
-                      <div
-                        key={group.id}
-                        className={`group flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-colors ${
-                          isActive
-                            ? 'bg-accent text-accent-foreground'
-                            : 'hover:bg-muted/60 text-foreground'
-                        }`}
-                        onClick={() => {
-                          setActiveGroup(group.id)
-                          setGroupSelectorOpen(false)
-                        }}
-                        data-testid={`group-item-${group.id}`}
-                      >
-                        <span className="text-sm truncate flex-1">{group.name}</span>
-                        <span className="text-[11px] text-muted-foreground/50 tabular-nums shrink-0">
-                          {taskCount}
-                        </span>
-                        {!isLastGroup && (
-                          <button
-                            className="opacity-0 group-hover:opacity-100 shrink-0 p-0.5 rounded-sm hover:bg-destructive/10 hover:text-destructive transition-all"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteGroup(group.id)
-                            }}
-                            data-testid={`delete-group-${group.id}`}
-                          >
-                            <Trash2 className="size-3" />
-                          </button>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-
-                <Separator className="my-1.5 opacity-60" />
-
-                {isCreatingGroup ? (
-                  <div className="px-3 py-1.5">
-                    <div className="flex gap-1.5">
-                      <Input
-                        ref={newGroupInputRef}
-                        placeholder="Group name..."
-                        value={newGroupName}
-                        onChange={(e) => setNewGroupName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleCreateGroup()
-                          if (e.key === 'Escape') {
-                            setIsCreatingGroup(false)
-                            setNewGroupName('')
-                          }
-                        }}
-                        className="h-7 text-sm"
-                        data-testid="new-group-input"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="shrink-0 size-7"
-                        onClick={handleCreateGroup}
-                        disabled={!newGroupName.trim()}
-                        data-testid="confirm-new-group"
-                      >
-                        <Plus className="size-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-                    onClick={() => setIsCreatingGroup(true)}
-                    data-testid="new-group-button"
-                  >
-                    <FolderPlus className="size-3.5" />
-                    <span>New Group</span>
-                  </button>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
+          <GroupSelector
+            open={groupSelectorOpen}
+            onOpenChange={setGroupSelectorOpen}
+            onDeleteGroup={handleDeleteGroup}
+          />
         </div>
       </div>
 
@@ -354,72 +218,15 @@ export function TaskList(): React.JSX.Element {
         )}
       </div>
 
-      {/* Settings dialog */}
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="sm:max-w-[380px]">
-          <DialogHeader>
-            <DialogTitle>Settings</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Theme</span>
-              <div className="flex items-center gap-1 rounded-md border p-0.5">
-                {(['light', 'dark', 'system'] as const).map((t) => {
-                  const icons = { light: Sun, dark: Moon, system: Monitor }
-                  const ThemeIcon = icons[t]
-                  return (
-                    <button
-                      key={t}
-                      className={`flex items-center gap-1.5 px-2 h-7 rounded-sm text-xs transition-colors ${
-                        mode === t
-                          ? 'bg-accent text-accent-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                      }`}
-                      onClick={() => setTheme(t)}
-                      data-testid={`theme-option-${t}`}
-                    >
-                      <ThemeIcon className="size-3.5" />
-                      {themeLabel[t]}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
-      {/* Delete group confirmation dialog */}
-      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete group &ldquo;{deleteConfirmGroup?.name}&rdquo;?</DialogTitle>
-            <DialogDescription>
-              {deleteConfirmHasSessions && <>Active sessions in this group will be stopped. </>}
-              {deleteConfirmTaskCount > 0 ? (
-                <>
-                  This will permanently delete {deleteConfirmTaskCount}{' '}
-                  {deleteConfirmTaskCount === 1 ? 'task' : 'tasks'} and all sub-tasks.
-                </>
-              ) : (
-                <>This group is empty and will be removed.</>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDeleteGroup}
-              data-testid="confirm-delete-group"
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <GroupDeleteConfirmDialog
+        group={deleteConfirmGroup}
+        taskCount={deleteConfirmTaskCount}
+        hasSessions={deleteConfirmHasSessions}
+        onConfirm={confirmDeleteGroup}
+        onCancel={() => setDeleteConfirm(null)}
+      />
 
       {/* Group directory validation error dialog */}
       <Dialog open={!!groupDirError} onOpenChange={(open) => !open && setGroupDirError(null)}>

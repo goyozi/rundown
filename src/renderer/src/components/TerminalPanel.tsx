@@ -152,7 +152,8 @@ export function TerminalPanel({ sessionId }: TerminalPanelProps): React.JSX.Elem
       terminalRef.current = null
       fitAddonRef.current = null
     }
-  }, [sessionId, handleResize, resolved])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, handleResize])
 
   const bg = resolved === 'dark' ? '#0f0f14' : '#f5f5f7'
 

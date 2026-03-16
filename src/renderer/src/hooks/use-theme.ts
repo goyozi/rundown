@@ -40,6 +40,20 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
   }
 })
 
+function setTheme(next: ThemeMode): void {
+  mode = next
+  localStorage.setItem(STORAGE_KEY, next)
+  apply(resolve(next))
+  syncNativeTheme(next)
+  notify()
+}
+
+function cycle(): void {
+  const order: ThemeMode[] = ['light', 'dark', 'system']
+  const idx = order.indexOf(mode)
+  setTheme(order[(idx + 1) % order.length])
+}
+
 export function useTheme(): {
   mode: ThemeMode
   resolved: ResolvedTheme
@@ -59,20 +73,6 @@ export function useTheme(): {
   useEffect(() => {
     apply(resolved)
   }, [resolved])
-
-  function setTheme(next: ThemeMode): void {
-    mode = next
-    localStorage.setItem(STORAGE_KEY, next)
-    apply(resolve(next))
-    syncNativeTheme(next)
-    notify()
-  }
-
-  function cycle(): void {
-    const order: ThemeMode[] = ['light', 'dark', 'system']
-    const idx = order.indexOf(mode)
-    setTheme(order[(idx + 1) % order.length])
-  }
 
   return { mode: current, resolved, setTheme, cycle }
 }

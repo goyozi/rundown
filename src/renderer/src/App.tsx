@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { TaskList } from './components/TaskList'
 import { TaskDetail } from './components/TaskDetail'
 import { useTaskStore } from './store/task-store'
+import { useShallow } from 'zustand/react/shallow'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 const MIN_SIDEBAR = 220
@@ -9,7 +10,13 @@ const MAX_SIDEBAR = 520
 const DEFAULT_SIDEBAR = 320
 
 function App(): React.JSX.Element {
-  const { loadTasks, loaded, stopSession } = useTaskStore()
+  const { loadTasks, loaded, stopSession } = useTaskStore(
+    useShallow((s) => ({
+      loadTasks: s.loadTasks,
+      loaded: s.loaded,
+      stopSession: s.stopSession
+    }))
+  )
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR)
   const isDragging = useRef(false)
 

@@ -13,6 +13,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useTaskStore, type Task } from '@/store/task-store'
+import { useShallow } from 'zustand/react/shallow'
 import { TaskItem } from './TaskItem'
 import { useTaskKeyboardNav } from '@/hooks/use-task-keyboard-nav'
 import { Circle, CheckCircle2, Loader2 } from 'lucide-react'
@@ -27,7 +28,17 @@ export interface DropIntent {
 
 export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
   const { getChildren, moveTask, getDepth, isDescendant, getMaxSubtreeDepth, activeSessions } =
-    useTaskStore()
+    useTaskStore(
+      useShallow((s) => ({
+        _tasks: s.tasks, // trigger re-renders for derived getters
+        getChildren: s.getChildren,
+        moveTask: s.moveTask,
+        getDepth: s.getDepth,
+        isDescendant: s.isDescendant,
+        getMaxSubtreeDepth: s.getMaxSubtreeDepth,
+        activeSessions: s.activeSessions
+      }))
+    )
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
   const [dropIntent, setDropIntent] = useState<DropIntent | null>(null)
   const dropIntentRef = useRef<DropIntent | null>(null)

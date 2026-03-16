@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import {
   parseDiff,
   Diff,
@@ -244,59 +244,50 @@ export function ReviewPanel({
   const comments = useMemo(() => taskComments ?? [], [taskComments])
   const commentCount = comments.length
 
-  const fetchBranchInfo = useCallback(async () => {
-    const result = await window.api.detectBranch(directory)
-    if (!result.error) {
-      setBranchInfo({ current: result.current, mainBranch: result.mainBranch, directory })
-    }
-    return result
-  }, [directory])
+  const refreshRef = useRef<(() => Promise<void>) | undefined>(undefined)
 
-  const fetchDiff = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      if (mode === 'uncommitted') {
-        const result = await window.api.diffUncommitted(directory)
-        if (result.error) {
-          setError(result.error)
+  useEffect(() => {
+    let cancelled = false
+    const run = async (): Promise<void> => {
+      setLoading(true)
+      setError(null)
+      setBranchInfo(null)
+
+      try {
+        const info = await window.api.detectBranch(directory)
+        if (cancelled) return
+        if (!info.error) {
+          setBranchInfo({ current: info.current, mainBranch: info.mainBranch, directory })
+        }
+
+        if (mode === 'uncommitted') {
+          const result = await window.api.diffUncommitted(directory)
+          if (cancelled) return
+          if (result.error) setError(result.error)
+          else setDiffText(result.diff)
         } else {
-          setDiffText(result.diff)
+          if (!info.mainBranch) {
+            setError('No main or master branch detected')
+            setDiffText('')
+            return
+          }
+          const result = await window.api.diffBranch(directory, info.mainBranch)
+          if (cancelled) return
+          if (result.error) setError(result.error)
+          else setDiffText(result.diff)
         }
-      } else {
-        // Branch mode: need mainBranch
-        let mainBranch = branchInfo?.mainBranch
-        if (!mainBranch) {
-          const info = await fetchBranchInfo()
-          mainBranch = info.mainBranch
-        }
-        if (!mainBranch) {
-          setError('No main or master branch detected')
-          setDiffText('')
-          return
-        }
-        const result = await window.api.diffBranch(directory, mainBranch)
-        if (result.error) {
-          setError(result.error)
-        } else {
-          setDiffText(result.diff)
-        }
+      } catch {
+        if (!cancelled) setError('Failed to fetch diff')
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-    } catch {
-      setError('Failed to fetch diff')
-    } finally {
-      setLoading(false)
     }
-  }, [directory, mode, branchInfo, fetchBranchInfo])
-
-  useEffect(() => {
-    setBranchInfo(null)
-    fetchBranchInfo()
-  }, [fetchBranchInfo])
-
-  useEffect(() => {
-    fetchDiff()
-  }, [fetchDiff])
+    refreshRef.current = run
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [directory, mode])
 
   const files = useMemo<FileData[]>(() => {
     if (!diffText) return []
@@ -491,7 +482,7 @@ export function ReviewPanel({
             <Button
               variant="ghost"
               size="icon-xs"
-              onClick={fetchDiff}
+              onClick={() => refreshRef.current?.()}
               disabled={loading}
               data-testid="refresh-diff"
             >

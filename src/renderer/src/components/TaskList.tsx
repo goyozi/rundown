@@ -26,6 +26,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { useTaskStore } from '@/store/task-store'
+import { useShallow } from 'zustand/react/shallow'
 import { useTheme } from '@/hooks/use-theme'
 import { DndTaskTree } from './DndTaskTree'
 
@@ -46,7 +47,23 @@ export function TaskList(): React.JSX.Element {
     activeSessions,
     tasks,
     selectTask
-  } = useTaskStore()
+  } = useTaskStore(
+    useShallow((s) => ({
+      getRootTasks: s.getRootTasks,
+      addTask: s.addTask,
+      groups: s.groups,
+      activeGroupId: s.activeGroupId,
+      getActiveGroup: s.getActiveGroup,
+      addGroup: s.addGroup,
+      removeGroup: s.removeGroup,
+      setActiveGroup: s.setActiveGroup,
+      getGroupTaskCount: s.getGroupTaskCount,
+      updateGroupDirectory: s.updateGroupDirectory,
+      activeSessions: s.activeSessions,
+      tasks: s.tasks,
+      selectTask: s.selectTask
+    }))
+  )
   const [newTaskDescription, setNewTaskDescription] = useState('')
   const [groupSelectorOpen, setGroupSelectorOpen] = useState(false)
   const [isCreatingGroup, setIsCreatingGroup] = useState(false)

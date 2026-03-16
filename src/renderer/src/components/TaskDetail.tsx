@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import {
   FolderOpen,
   Terminal,
@@ -14,6 +14,7 @@ import {
   X
 } from 'lucide-react'
 import { useTaskStore } from '@/store/task-store'
+import { useShallow } from 'zustand/react/shallow'
 import { useTheme } from '@/hooks/use-theme'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -40,9 +41,8 @@ interface ShellTab {
   sessionId: string
 }
 
-let shellCounter = 0
-
 export function TaskDetail(): React.JSX.Element | null {
+  const shellCounterRef = useRef(0)
   const {
     selectedTaskId,
     getTask,
@@ -51,7 +51,20 @@ export function TaskDetail(): React.JSX.Element | null {
     activeSessions,
     startSession,
     stopSession
-  } = useTaskStore()
+  } = useTaskStore(
+    useShallow((s) => ({
+      selectedTaskId: s.selectedTaskId,
+      // tasks & groups included to trigger re-renders for derived getters (getTask, getEffectiveDirectory)
+      _tasks: s.tasks,
+      _groups: s.groups,
+      getTask: s.getTask,
+      getEffectiveDirectory: s.getEffectiveDirectory,
+      updateDirectory: s.updateDirectory,
+      activeSessions: s.activeSessions,
+      startSession: s.startSession,
+      stopSession: s.stopSession
+    }))
+  )
   const { resolved } = useTheme()
   const [dirError, setDirError] = useState<string | null>(null)
   const [isStarting, setIsStarting] = useState(false)
@@ -184,8 +197,8 @@ export function TaskDetail(): React.JSX.Element | null {
 
   const handleAddShellTab = async (): Promise<void> => {
     if (!effectiveDir || !selectedTaskId) return
-    shellCounter++
-    const id = `shell-${shellCounter}`
+    shellCounterRef.current++
+    const id = `shell-${shellCounterRef.current}`
     const sessionId = `${selectedTaskId}:${id}`
     const num = shellTabs.length + 1
     const tab: ShellTab = { id, label: `Shell ${num}`, sessionId }

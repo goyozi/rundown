@@ -24,6 +24,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { useTaskStore, type Task } from '@/store/task-store'
+import { useShallow } from 'zustand/react/shallow'
 import { cn } from '@/lib/utils'
 import type { DropIntent } from './DndTaskTree'
 
@@ -83,7 +84,22 @@ export function TaskItem({
     getDepth,
     activeSessions,
     stopSession
-  } = useTaskStore()
+  } = useTaskStore(
+    useShallow((s) => ({
+      selectedTaskId: s.selectedTaskId,
+      _tasks: s.tasks, // trigger re-renders for getChildren/getDepth
+      selectTask: s.selectTask,
+      updateDescription: s.updateDescription,
+      deleteTask: s.deleteTask,
+      markDone: s.markDone,
+      markIdle: s.markIdle,
+      addTask: s.addTask,
+      getChildren: s.getChildren,
+      getDepth: s.getDepth,
+      activeSessions: s.activeSessions,
+      stopSession: s.stopSession
+    }))
+  )
 
   const { attributes, listeners, setNodeRef, isDragging } = useSortable({
     id: task.id

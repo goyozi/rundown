@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, nativeTheme, session, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, nativeTheme, session, dialog } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -140,7 +140,7 @@ app.whenReady().then(() => {
     nativeTheme.themeSource = ThemeSchema.parse(theme)
   })
 
-  safeHandle(IPC.RENDERER_LOG_ERROR, (_event, message: unknown, stack?: unknown) => {
+  ipcMain.on(IPC.RENDERER_LOG_ERROR, (_event, message: unknown, stack?: unknown) => {
     log.error('[Renderer]', message, stack ?? '')
   })
 

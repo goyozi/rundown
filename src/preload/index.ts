@@ -19,7 +19,7 @@ const api = {
   saveComments: (comments: Record<string, Comment[]>) =>
     ipcRenderer.invoke(IPC.STORE_SAVE_COMMENTS, comments),
   logError: (message: string, stack?: string) =>
-    ipcRenderer.invoke(IPC.RENDERER_LOG_ERROR, message, stack),
+    ipcRenderer.send(IPC.RENDERER_LOG_ERROR, message, stack),
   openDirectory: () => ipcRenderer.invoke(IPC.DIALOG_OPEN_DIRECTORY),
   validateRepo: (dirPath: string) => ipcRenderer.invoke(IPC.GIT_VALIDATE_REPO, dirPath),
   detectBranch: (dirPath: string) => ipcRenderer.invoke(IPC.GIT_DETECT_BRANCH, dirPath),
@@ -52,16 +52,13 @@ const api = {
   }
 }
 
-if (process.contextIsolated) {
-  try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
-    contextBridge.exposeInMainWorld('api', api)
-  } catch (error) {
-    console.error(error)
-  }
-} else {
-  // @ts-ignore (define in dts)
-  window.electron = electronAPI
-  // @ts-ignore (define in dts)
-  window.api = api
+if (!process.contextIsolated) {
+  throw new Error('Context isolation is required but was not enabled')
+}
+
+try {
+  contextBridge.exposeInMainWorld('electron', electronAPI)
+  contextBridge.exposeInMainWorld('api', api)
+} catch (error) {
+  console.error(error)
 }

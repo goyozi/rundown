@@ -44,7 +44,12 @@ export const createGroupSlice: StateCreator<FullStore, [], [], GroupSlice> = (se
 
     for (const taskId of groupTaskIds) {
       if (activeSessions.has(taskId)) {
-        window.api.ptyKill(taskId)
+        window.api.ptyKill(taskId).catch((err) => {
+          window.api.logError(
+            `Failed to kill session ${taskId} during group removal`,
+            err instanceof Error ? err.stack : String(err)
+          )
+        })
       }
     }
 

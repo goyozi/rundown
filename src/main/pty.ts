@@ -52,15 +52,26 @@ function persistSessionPids(): void {
   }
 }
 
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0) // Signal 0 checks existence without killing
+    return true
+  } catch {
+    return false
+  }
+}
+
 function cleanupOrphanedSessions(): void {
   try {
     const data = readFileSync(getPidFilePath(), 'utf-8')
     const pids: Record<string, number> = JSON.parse(data)
     for (const pid of Object.values(pids)) {
       try {
-        process.kill(pid, 'SIGTERM')
+        if (isProcessAlive(pid)) {
+          process.kill(pid, 'SIGTERM')
+        }
       } catch {
-        // Process already dead, ignore
+        // Process already dead or not owned, ignore
       }
     }
     writeFileSync(getPidFilePath(), '{}')
@@ -74,10 +85,10 @@ export function getActiveSessionCount(): number {
 }
 
 export function killAllSessions(): void {
-  for (const [id, proc] of sessions) {
+  for (const proc of sessions.values()) {
     proc.kill()
-    sessions.delete(id)
   }
+  sessions.clear()
   persistSessionPids()
 }
 

@@ -14,7 +14,7 @@ interface RundownAPI {
   saveRootTaskOrder(order: Record<string, string[]>): Promise<void>
   getComments(): Promise<Record<string, Comment[]>>
   saveComments(comments: Record<string, Comment[]>): Promise<void>
-  logError(message: string, stack?: string): Promise<void>
+  logError(message: string, stack?: string): void
   openDirectory(): Promise<string | undefined>
   validateRepo(dirPath: string): Promise<{ valid: boolean; error?: string }>
   detectBranch(

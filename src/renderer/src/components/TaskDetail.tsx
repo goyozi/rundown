@@ -21,8 +21,10 @@ import { TabBar } from './TabBar'
 import type { ShellTab } from '@/store/slices/shell-tab-slice'
 import type { DiffMode } from '../../../shared/types'
 
+// Module-level counter so shell IDs never collide across remounts
+let shellIdCounter = 0
+
 export function TaskDetail(): React.JSX.Element | null {
-  const shellCounterRef = useRef(0)
   const {
     selectedTaskId,
     task,
@@ -122,8 +124,8 @@ export function TaskDetail(): React.JSX.Element | null {
     if (!currentTaskId) return
     const freshDir = useTaskStore.getState().getEffectiveDirectory(currentTaskId)
     if (!freshDir) return
-    shellCounterRef.current++
-    const id = `shell-${shellCounterRef.current}`
+    shellIdCounter++
+    const id = `shell-${shellIdCounter}`
     const sessionId = `${currentTaskId}:${id}`
     const currentShellTabs = useTaskStore.getState().getShellTabs(currentTaskId)
     const num = currentShellTabs.length + 1

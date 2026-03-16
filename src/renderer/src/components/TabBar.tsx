@@ -2,14 +2,7 @@ import React from 'react'
 import { Terminal, Code2, BotMessageSquare, Plus, X } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-
-export type DetailTab = 'claude' | 'review' | `shell:${string}`
-
-export interface ShellTab {
-  id: string
-  label: string
-  sessionId: string
-}
+import type { DetailTab, ShellTab } from '@/store/slices/shell-tab-slice'
 
 interface TabBarProps {
   activeTab: DetailTab

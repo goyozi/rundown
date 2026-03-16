@@ -14,6 +14,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { useTaskStore } from '@/store/task-store'
+import { useDirectoryPicker } from '@/hooks/use-directory-picker'
 import { useShallow } from 'zustand/react/shallow'
 import { DndTaskTree } from './DndTaskTree'
 import { GroupSelector } from './GroupSelector'
@@ -49,8 +50,18 @@ export function TaskList(): React.JSX.Element {
   const [newTaskDescription, setNewTaskDescription] = useState('')
   const [groupSelectorOpen, setGroupSelectorOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [groupDirError, setGroupDirError] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+
+  const {
+    pickDirectory: handlePickGroupDirectory,
+    dirError: groupDirError,
+    clearDirError: clearGroupDirError
+  } = useDirectoryPicker({
+    onValid: (dir) => {
+      const freshGroupId = useTaskStore.getState().activeGroupId
+      updateGroupDirectory(freshGroupId, dir)
+    }
+  })
 
   const rootTasks = getRootTasks()
   const activeGroup = getActiveGroup()
@@ -78,21 +89,6 @@ export function TaskList(): React.JSX.Element {
     if (deleteConfirm) {
       removeGroup(deleteConfirm)
       setDeleteConfirm(null)
-    }
-  }
-
-  const handlePickGroupDirectory = async (): Promise<void> => {
-    const dir = await window.api.openDirectory()
-    if (dir) {
-      const result = await window.api.validateRepo(dir)
-      if (result.valid) {
-        setGroupDirError(null)
-        // Read fresh activeGroupId after awaits to avoid stale closure
-        const freshGroupId = useTaskStore.getState().activeGroupId
-        updateGroupDirectory(freshGroupId, dir)
-      } else {
-        setGroupDirError(result.error ?? 'Invalid directory')
-      }
     }
   }
 
@@ -229,14 +225,14 @@ export function TaskList(): React.JSX.Element {
       />
 
       {/* Group directory validation error dialog */}
-      <Dialog open={!!groupDirError} onOpenChange={(open) => !open && setGroupDirError(null)}>
+      <Dialog open={!!groupDirError} onOpenChange={(open) => !open && clearGroupDirError()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Invalid directory</DialogTitle>
             <DialogDescription>{groupDirError}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setGroupDirError(null)}>OK</Button>
+            <Button onClick={clearGroupDirError}>OK</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

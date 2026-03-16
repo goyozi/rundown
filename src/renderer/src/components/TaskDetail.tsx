@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { ListTodo, Terminal, AlertCircle, BotMessageSquare } from 'lucide-react'
 import { useTaskStore } from '@/store/task-store'
 import { useShallow } from 'zustand/react/shallow'
 import { useTheme } from '@/hooks/use-theme'
+import { useDirectoryPicker } from '@/hooks/use-directory-picker'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -17,9 +18,8 @@ import { TerminalPanel } from './TerminalPanel'
 import { ReviewPanel } from './ReviewPanel'
 import { TaskHeader } from './TaskHeader'
 import { TabBar } from './TabBar'
-import type { DetailTab, ShellTab } from './TabBar'
-
-type DiffMode = 'uncommitted' | 'branch'
+import type { ShellTab } from '@/store/slices/shell-tab-slice'
+import type { DiffMode } from '../../../shared/types'
 
 export function TaskDetail(): React.JSX.Element | null {
   const shellCounterRef = useRef(0)
@@ -30,7 +30,12 @@ export function TaskDetail(): React.JSX.Element | null {
     updateDirectory,
     activeSessions,
     startSession,
-    stopSession
+    stopSession,
+    tabPerTask,
+    storeSetActiveTab,
+    shellTabsPerTask,
+    addShellTab,
+    removeShellTab
   } = useTaskStore(
     useShallow((s) => ({
       selectedTaskId: s.selectedTaskId,
@@ -39,26 +44,26 @@ export function TaskDetail(): React.JSX.Element | null {
       updateDirectory: s.updateDirectory,
       activeSessions: s.activeSessions,
       startSession: s.startSession,
-      stopSession: s.stopSession
+      stopSession: s.stopSession,
+      tabPerTask: s.tabPerTask,
+      storeSetActiveTab: s.setActiveTab,
+      shellTabsPerTask: s.shellTabsPerTask,
+      addShellTab: s.addShellTab,
+      removeShellTab: s.removeShellTab
     }))
   )
   const { resolved } = useTheme()
-  const [dirError, setDirError] = useState<string | null>(null)
   const [isStarting, setIsStarting] = useState(false)
-  const [tabPerTask, setTabPerTask] = useState<Record<string, DetailTab>>({})
   const [modePerTask, setModePerTask] = useState<Record<string, DiffMode>>({})
-  const [shellTabsPerTask, setShellTabsPerTask] = useState<Record<string, ShellTab[]>>({})
 
   const activeTab = (selectedTaskId && tabPerTask[selectedTaskId]) || 'claude'
-  const setActiveTab = useCallback(
-    (tab: DetailTab): void => {
-      if (selectedTaskId) {
-        setTabPerTask((prev) => ({ ...prev, [selectedTaskId]: tab }))
-      }
-    },
-    [selectedTaskId]
-  )
   const shellTabs = (selectedTaskId && shellTabsPerTask[selectedTaskId]) || []
+  const setActiveTab = useCallback(
+    (tab: Parameters<typeof storeSetActiveTab>[1]): void => {
+      if (selectedTaskId) storeSetActiveTab(selectedTaskId, tab)
+    },
+    [selectedTaskId, storeSetActiveTab]
+  )
 
   const diffMode: DiffMode = (selectedTaskId && modePerTask[selectedTaskId]) || 'uncommitted'
   const setDiffMode = useCallback(
@@ -70,61 +75,24 @@ export function TaskDetail(): React.JSX.Element | null {
     [selectedTaskId]
   )
 
-  // Clean up shell tab when its PTY process exits naturally (e.g. user types `exit`)
-  useEffect(() => {
-    const cleanup = window.api.onPtyExit((exitedSessionId) => {
-      if (!exitedSessionId.includes(':shell-')) return
-
-      setShellTabsPerTask((prev) => {
-        const updated = { ...prev }
-        for (const [taskId, tabs] of Object.entries(updated)) {
-          const match = tabs.find((t) => t.sessionId === exitedSessionId)
-          if (match) {
-            updated[taskId] = tabs.filter((t) => t.id !== match.id)
-            break
-          }
-        }
-        return updated
-      })
-
-      setTabPerTask((prev) => {
-        const updated = { ...prev }
-        for (const [taskId, tab] of Object.entries(updated)) {
-          if (typeof tab === 'string' && tab.startsWith('shell:')) {
-            const shellId = tab.slice('shell:'.length)
-            if (exitedSessionId.endsWith(`:${shellId}`)) {
-              updated[taskId] = 'claude'
-              break
-            }
-          }
-        }
-        return updated
-      })
-    })
-    return cleanup
-  }, [])
-
   // Keep refs to avoid stale closures across async boundaries
   const taskIdRef = useRef(selectedTaskId)
   taskIdRef.current = selectedTaskId
 
-  const handlePickDirectory = useCallback(async (): Promise<void> => {
-    const currentTaskId = taskIdRef.current
-    if (!currentTaskId || activeSessions.has(currentTaskId)) return
-    const dir = await window.api.openDirectory()
-    if (dir) {
-      const result = await window.api.validateRepo(dir)
-      // Re-read taskId after awaits to avoid stale closure
+  const {
+    pickDirectory: handlePickDirectory,
+    dirError,
+    clearDirError
+  } = useDirectoryPicker({
+    onValid: (dir) => {
       const freshTaskId = taskIdRef.current
-      if (!freshTaskId) return
-      if (result.valid) {
-        setDirError(null)
-        updateDirectory(freshTaskId, dir)
-      } else {
-        setDirError(result.error ?? 'Invalid directory')
-      }
+      if (freshTaskId) updateDirectory(freshTaskId, dir)
+    },
+    canPick: () => {
+      const currentTaskId = taskIdRef.current
+      return !!currentTaskId && !activeSessions.has(currentTaskId)
     }
-  }, [activeSessions, updateDirectory])
+  })
 
   const handleStartSession = useCallback(async (): Promise<void> => {
     const currentTaskId = taskIdRef.current
@@ -157,34 +125,28 @@ export function TaskDetail(): React.JSX.Element | null {
     shellCounterRef.current++
     const id = `shell-${shellCounterRef.current}`
     const sessionId = `${currentTaskId}:${id}`
-    const currentShellTabs = shellTabsPerTask[currentTaskId] || []
+    const currentShellTabs = useTaskStore.getState().getShellTabs(currentTaskId)
     const num = currentShellTabs.length + 1
     const tab: ShellTab = { id, label: `Shell ${num}`, sessionId }
 
-    setShellTabsPerTask((prev) => ({
-      ...prev,
-      [currentTaskId]: [...(prev[currentTaskId] || []), tab]
-    }))
-    setActiveTab(`shell:${id}`)
+    addShellTab(currentTaskId, tab)
+    storeSetActiveTab(currentTaskId, `shell:${id}`)
 
     await window.api.ptySpawnShell(sessionId, freshDir, resolved)
-  }, [resolved, shellTabsPerTask, setActiveTab])
+  }, [resolved, addShellTab, storeSetActiveTab])
 
   const handleCloseShellTab = useCallback(
     async (shellTab: ShellTab): Promise<void> => {
       if (!selectedTaskId) return
       await window.api.ptyKill(shellTab.sessionId)
 
-      setShellTabsPerTask((prev) => ({
-        ...prev,
-        [selectedTaskId]: (prev[selectedTaskId] || []).filter((t) => t.id !== shellTab.id)
-      }))
+      removeShellTab(selectedTaskId, shellTab.id)
 
       if (activeTab === `shell:${shellTab.id}`) {
-        setActiveTab('claude')
+        storeSetActiveTab(selectedTaskId, 'claude')
       }
     },
-    [selectedTaskId, activeTab, setActiveTab]
+    [selectedTaskId, activeTab, storeSetActiveTab, removeShellTab]
   )
 
   if (!selectedTaskId) {
@@ -286,7 +248,7 @@ export function TaskDetail(): React.JSX.Element | null {
       )}
 
       {/* Directory validation error dialog */}
-      <Dialog open={!!dirError} onOpenChange={(open) => !open && setDirError(null)}>
+      <Dialog open={!!dirError} onOpenChange={(open) => !open && clearDirError()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -296,7 +258,7 @@ export function TaskDetail(): React.JSX.Element | null {
             <DialogDescription data-testid="directory-error">{dirError}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setDirError(null)}>OK</Button>
+            <Button onClick={clearDirError}>OK</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -7,11 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useCommentStore } from '@/store/comment-store'
 import { resolveFilePath, computeStats, tokenizeFile, getLineNumber } from '@/lib/diff-utils'
+import type { DiffMode } from '../../../shared/types'
 import { CommentWidget } from './CommentWidget'
 import { DiffFileCard } from './DiffFileCard'
 import { ReviewToolbar } from './ReviewToolbar'
-
-type DiffMode = 'uncommitted' | 'branch'
 
 interface ReviewPanelProps {
   directory: string

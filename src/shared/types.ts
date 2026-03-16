@@ -16,6 +16,8 @@ export interface TaskGroup {
   createdAt: string
 }
 
+export type DiffMode = 'uncommitted' | 'branch'
+
 export interface Comment {
   id: string
   filePath: string

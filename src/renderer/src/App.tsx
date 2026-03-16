@@ -1,21 +1,25 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { AlertCircle } from 'lucide-react'
 import { TaskList } from './components/TaskList'
 import { TaskDetail } from './components/TaskDetail'
 import { useTaskStore } from './store/task-store'
 import { useCommentStore } from './store/comment-store'
 import { useShallow } from 'zustand/react/shallow'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
 
 const MIN_SIDEBAR = 220
 const MAX_SIDEBAR = 520
 const DEFAULT_SIDEBAR = 320
 
 function App(): React.JSX.Element {
-  const { loadTasks, loaded, stopSession } = useTaskStore(
+  const { loadTasks, loaded, loadError, stopSession, cleanupExitedShell } = useTaskStore(
     useShallow((s) => ({
       loadTasks: s.loadTasks,
       loaded: s.loaded,
-      stopSession: s.stopSession
+      loadError: s.loadError,
+      stopSession: s.stopSession,
+      cleanupExitedShell: s.cleanupExitedShell
     }))
   )
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR)
@@ -25,17 +29,18 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     loadTasks()
-    loadComments()
+    loadComments().catch(console.error)
     window.api.getSidebarWidth().then((w) => setSidebarWidth(w))
   }, [loadTasks, loadComments])
 
-  // Listen for PTY process exits to clean up session state
+  // Listen for PTY process exits to clean up session + shell tab state
   useEffect(() => {
-    const cleanup = window.api.onPtyExit((taskId) => {
-      stopSession(taskId)
+    const cleanup = window.api.onPtyExit((sessionId) => {
+      stopSession(sessionId)
+      cleanupExitedShell(sessionId)
     })
     return cleanup
-  }, [stopSession])
+  }, [stopSession, cleanupExitedShell])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -62,6 +67,20 @@ function App(): React.JSX.Element {
     document.addEventListener('mousemove', onMouseMove)
     document.addEventListener('mouseup', onMouseUp)
   }, [])
+
+  if (loadError) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <AlertCircle className="size-6 text-destructive" />
+          <p className="text-sm text-muted-foreground">{loadError}</p>
+          <Button variant="outline" size="sm" onClick={() => loadTasks()}>
+            Try again
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   if (!loaded) {
     return (

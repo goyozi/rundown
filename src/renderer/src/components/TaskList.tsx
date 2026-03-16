@@ -8,7 +8,8 @@ import {
   ChevronDown,
   Trash2,
   FolderPlus,
-  FolderOpen
+  FolderOpen,
+  Settings
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,7 +29,6 @@ import { useTaskStore } from '@/store/task-store'
 import { useTheme } from '@/hooks/use-theme'
 import { DndTaskTree } from './DndTaskTree'
 
-const themeIcon = { light: Sun, dark: Moon, system: Monitor } as const
 const themeLabel = { light: 'Light', dark: 'Dark', system: 'System' } as const
 
 export function TaskList(): React.JSX.Element {
@@ -53,12 +53,12 @@ export function TaskList(): React.JSX.Element {
   const [newGroupName, setNewGroupName] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [groupDirError, setGroupDirError] = useState<string | null>(null)
-  const { mode, cycle } = useTheme()
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const { mode, setTheme } = useTheme()
   const newGroupInputRef = useRef<HTMLInputElement>(null)
 
   const rootTasks = getRootTasks()
   const activeGroup = getActiveGroup()
-  const Icon = themeIcon[mode]
 
   useEffect(() => {
     if (isCreatingGroup && newGroupInputRef.current) {
@@ -237,21 +237,6 @@ export function TaskList(): React.JSX.Element {
               </div>
             </PopoverContent>
           </Popover>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="ml-auto size-7"
-                onClick={cycle}
-                data-testid="theme-toggle"
-              >
-                <Icon className="size-3.5 text-muted-foreground" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">{themeLabel[mode]}</TooltipContent>
-          </Tooltip>
         </div>
       </div>
 
@@ -328,17 +313,64 @@ export function TaskList(): React.JSX.Element {
         </div>
       </ScrollArea>
 
-      {/* Footer with task count */}
-      {rootTasks.length > 0 && (
-        <>
-          <Separator className="opacity-60" />
-          <div className="px-4 py-2">
-            <p className="text-[11px] text-muted-foreground/50 tabular-nums">
-              {rootTasks.length} {rootTasks.length === 1 ? 'task' : 'tasks'}
-            </p>
+      {/* Footer with settings and task count */}
+      <Separator className="opacity-60" />
+      <div className="flex items-center gap-2 px-3 py-1.5 no-drag">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6"
+              onClick={() => setSettingsOpen(true)}
+              data-testid="settings-button"
+            >
+              <Settings className="size-3.5 text-muted-foreground" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Settings</TooltipContent>
+        </Tooltip>
+        {rootTasks.length > 0 && (
+          <p className="text-[11px] text-muted-foreground/50 tabular-nums">
+            {rootTasks.length} {rootTasks.length === 1 ? 'task' : 'tasks'}
+          </p>
+        )}
+      </div>
+
+      {/* Settings dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="sm:max-w-[380px]">
+          <DialogHeader>
+            <DialogTitle>Settings</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Theme</span>
+              <div className="flex items-center gap-1 rounded-md border p-0.5">
+                {(['light', 'dark', 'system'] as const).map((t) => {
+                  const icons = { light: Sun, dark: Moon, system: Monitor }
+                  const ThemeIcon = icons[t]
+                  return (
+                    <button
+                      key={t}
+                      className={`flex items-center gap-1.5 px-2 h-7 rounded-sm text-xs transition-colors ${
+                        mode === t
+                          ? 'bg-accent text-accent-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                      }`}
+                      onClick={() => setTheme(t)}
+                      data-testid={`theme-option-${t}`}
+                    >
+                      <ThemeIcon className="size-3.5" />
+                      {themeLabel[t]}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
-        </>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete group confirmation dialog */}
       <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>

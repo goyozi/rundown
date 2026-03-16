@@ -158,10 +158,11 @@ export function TerminalPanel({ sessionId }: TerminalPanelProps): React.JSX.Elem
 
   return (
     <div
-      ref={containerRef}
-      className="flex-1 min-h-0"
+      className="flex-1 min-h-0 overflow-hidden"
       style={{ padding: '8px 4px 4px 8px', background: bg }}
       data-testid="terminal-panel"
-    />
+    >
+      <div ref={containerRef} className="h-full w-full" />
+    </div>
   )
 }

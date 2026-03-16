@@ -15,6 +15,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useTaskStore, type Task } from '@/store/task-store'
 import { useShallow } from 'zustand/react/shallow'
 import { TaskItem } from './TaskItem'
+import { OperationConfirmDialog } from './OperationConfirmDialog'
 import { useTaskKeyboardNav } from '@/hooks/use-task-keyboard-nav'
 import { Circle, CheckCircle2, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -258,6 +259,7 @@ export function DndTaskTree({ tasks }: { tasks: Task[] }): React.ReactElement {
           ) : null}
         </DragOverlay>
       </DndContext>
+      <OperationConfirmDialog />
     </div>
   )
 }

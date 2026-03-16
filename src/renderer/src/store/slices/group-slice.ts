@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand'
 import type { TaskGroup } from '../../../../shared/types'
 import type { FullStore } from '../task-store'
+import { useCommentStore } from '../comment-store'
 
 export interface GroupSlice {
   groups: TaskGroup[]
@@ -41,6 +42,12 @@ export const createGroupSlice: StateCreator<FullStore, [], [], GroupSlice> = (se
     if (groups.length <= 1) return
 
     const groupTaskIds = tasks.filter((t) => t.groupId === id).map((t) => t.id)
+
+    // Clean up comments for all tasks in this group
+    const commentStore = useCommentStore.getState()
+    for (const taskId of groupTaskIds) {
+      commentStore.clearComments(taskId)
+    }
 
     for (const taskId of groupTaskIds) {
       if (activeSessions.has(taskId)) {

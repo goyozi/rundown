@@ -15,14 +15,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
 import { useTaskStore, type Task } from '@/store/task-store'
 import { useShallow } from 'zustand/react/shallow'
 import { cn } from '@/lib/utils'
@@ -76,27 +68,23 @@ export function TaskItem({
     selectedTaskId,
     selectTask,
     updateDescription,
-    deleteTask,
-    markDone,
-    markIdle,
     addTask,
     getChildren,
     getDepth,
     activeSessions,
-    stopSession
+    requestDelete,
+    requestMarkDone
   } = useTaskStore(
     useShallow((s) => ({
       selectedTaskId: s.selectedTaskId,
       selectTask: s.selectTask,
       updateDescription: s.updateDescription,
-      deleteTask: s.deleteTask,
-      markDone: s.markDone,
-      markIdle: s.markIdle,
       addTask: s.addTask,
       getChildren: s.getChildren,
       getDepth: s.getDepth,
       activeSessions: s.activeSessions,
-      stopSession: s.stopSession
+      requestDelete: s.requestDelete,
+      requestMarkDone: s.requestMarkDone
     }))
   )
 
@@ -109,9 +97,6 @@ export function TaskItem({
   const [editValue, setEditValue] = useState(task.description)
   const [isAddingChild, setIsAddingChild] = useState(false)
   const [childDescription, setChildDescription] = useState('')
-  const [showDoneConfirm, setShowDoneConfirm] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-
   const children = getChildren(task.id)
   const hasChildren = children.length > 0
   const canAddChild = getDepth(task.id) < 4
@@ -146,26 +131,9 @@ export function TaskItem({
     }
   }
 
-  const handleToggleDone = async (e: React.MouseEvent): Promise<void> => {
+  const handleToggleDone = (e: React.MouseEvent): void => {
     e.stopPropagation()
-    if (isDone) {
-      markIdle(task.id)
-    } else if (sessionActive) {
-      setShowDoneConfirm(true)
-    } else {
-      markDone(task.id)
-    }
-  }
-
-  const handleConfirmDone = async (): Promise<void> => {
-    try {
-      await window.api.ptyKill(task.id)
-    } catch {
-      // Process may have already exited — proceed with cleanup
-    }
-    stopSession(task.id)
-    markDone(task.id)
-    setShowDoneConfirm(false)
+    requestMarkDone(task.id)
   }
 
   return (
@@ -301,7 +269,7 @@ export function TaskItem({
               <ActionButton
                 onClick={(e) => {
                   e.stopPropagation()
-                  setShowDeleteConfirm(true)
+                  requestDelete(task.id)
                 }}
                 label="Delete"
                 className="hover:text-destructive"
@@ -374,64 +342,6 @@ export function TaskItem({
           style={{ marginLeft: `${depth * 16}px` }}
         />
       )}
-
-      {/* Confirmation dialog for marking done with active session */}
-      <Dialog open={showDoneConfirm} onOpenChange={setShowDoneConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Stop session and mark as done?</DialogTitle>
-            <DialogDescription>
-              A session is still active. Stop the session and mark as done?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDoneConfirm(false)}
-              data-testid="cancel-done"
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmDone} data-testid="confirm-done">
-              Yes, mark as done
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirmation dialog for deleting a task */}
-      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete task?</DialogTitle>
-            <DialogDescription>
-              {hasChildren
-                ? `This will delete "${task.description}" and all its sub-tasks.`
-                : `This will delete "${task.description}".`}
-              {sessionActive && ' The active session will be stopped.'}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteConfirm(false)}
-              data-testid="cancel-delete"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                setShowDeleteConfirm(false)
-                deleteTask(task.id)
-              }}
-              data-testid="confirm-delete"
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

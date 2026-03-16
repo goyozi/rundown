@@ -5,6 +5,10 @@ import { createTaskSlice, type TaskSlice } from './slices/task-slice'
 import { createGroupSlice, type GroupSlice } from './slices/group-slice'
 import { createSessionSlice, type SessionSlice } from './slices/session-slice'
 import { createShellTabSlice, type ShellTabSlice } from './slices/shell-tab-slice'
+import {
+  createOperationRequestSlice,
+  type OperationRequestSlice
+} from './slices/operation-request-slice'
 
 export type { Task, TaskGroup }
 
@@ -16,7 +20,12 @@ interface PersistenceSlice {
   persistRootTaskOrder: () => void
 }
 
-export type FullStore = TaskSlice & GroupSlice & SessionSlice & ShellTabSlice & PersistenceSlice
+export type FullStore = TaskSlice &
+  GroupSlice &
+  SessionSlice &
+  ShellTabSlice &
+  OperationRequestSlice &
+  PersistenceSlice
 
 export const useTaskStore = create<FullStore>((...a) => {
   const [set, get] = a
@@ -26,6 +35,7 @@ export const useTaskStore = create<FullStore>((...a) => {
     ...createGroupSlice(...a),
     ...createSessionSlice(...a),
     ...createShellTabSlice(...a),
+    ...createOperationRequestSlice(...a),
 
     loadError: null,
 

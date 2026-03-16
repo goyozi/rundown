@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand'
 import type { Task } from '../../../../shared/types'
 import type { FullStore } from '../task-store'
+import { useCommentStore } from '../comment-store'
 
 export interface TaskSlice {
   tasks: Task[]
@@ -104,6 +105,12 @@ export const createTaskSlice: StateCreator<FullStore, [], [], TaskSlice> = (set,
 
     const idsToRemove = new Set(collectIds(id))
     const task = get().tasks.find((t) => t.id === id)
+
+    // Clean up comments for deleted tasks
+    const commentStore = useCommentStore.getState()
+    for (const taskId of idsToRemove) {
+      commentStore.clearComments(taskId)
+    }
 
     // Kill active sessions for the task and all its descendants
     const { activeSessions, stopSession } = get()

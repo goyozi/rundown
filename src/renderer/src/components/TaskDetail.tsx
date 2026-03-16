@@ -157,7 +157,11 @@ export function TaskDetail(): React.JSX.Element | null {
   const handleCloseShellTab = useCallback(
     async (shellTab: ShellTab): Promise<void> => {
       if (!selectedTaskId) return
-      await window.api.ptyKill(shellTab.sessionId)
+      try {
+        await window.api.ptyKill(shellTab.sessionId)
+      } catch {
+        // Process may have already exited — proceed with cleanup
+      }
 
       removeShellTab(selectedTaskId, shellTab.id)
 

@@ -94,26 +94,13 @@ export function useTaskKeyboardNav(containerRef: RefObject<HTMLDivElement | null
         case 'Backspace': {
           e.preventDefault()
           if (!selectedTaskId) return
-          const nextFocus =
-            currentIndex < visibleIds.length - 1
-              ? visibleIds[currentIndex + 1]
-              : currentIndex > 0
-                ? visibleIds[currentIndex - 1]
-                : null
-          store.deleteTask(selectedTaskId)
-          selectTask(nextFocus)
+          store.requestDelete(selectedTaskId)
           break
         }
         case ' ': {
           e.preventDefault()
           if (!selectedTaskId) return
-          const task = store.getTask(selectedTaskId)
-          if (!task) return
-          if (task.state === 'done') {
-            store.markIdle(selectedTaskId)
-          } else if (!store.activeSessions.has(selectedTaskId)) {
-            store.markDone(selectedTaskId)
-          }
+          store.requestMarkDone(selectedTaskId)
           break
         }
         case 'Tab': {

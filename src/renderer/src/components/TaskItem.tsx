@@ -110,6 +110,7 @@ export function TaskItem({
   const [isAddingChild, setIsAddingChild] = useState(false)
   const [childDescription, setChildDescription] = useState('')
   const [showDoneConfirm, setShowDoneConfirm] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const children = getChildren(task.id)
   const hasChildren = children.length > 0
@@ -157,7 +158,11 @@ export function TaskItem({
   }
 
   const handleConfirmDone = async (): Promise<void> => {
-    await window.api.ptyKill(task.id)
+    try {
+      await window.api.ptyKill(task.id)
+    } catch {
+      // Process may have already exited — proceed with cleanup
+    }
     stopSession(task.id)
     markDone(task.id)
     setShowDoneConfirm(false)
@@ -296,7 +301,7 @@ export function TaskItem({
               <ActionButton
                 onClick={(e) => {
                   e.stopPropagation()
-                  deleteTask(task.id)
+                  setShowDeleteConfirm(true)
                 }}
                 label="Delete"
                 className="hover:text-destructive"
@@ -389,6 +394,40 @@ export function TaskItem({
             </Button>
             <Button onClick={handleConfirmDone} data-testid="confirm-done">
               Yes, mark as done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation dialog for deleting a task */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete task?</DialogTitle>
+            <DialogDescription>
+              {hasChildren
+                ? `This will delete "${task.description}" and all its sub-tasks.`
+                : `This will delete "${task.description}".`}
+              {sessionActive && ' The active session will be stopped.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteConfirm(false)}
+              data-testid="cancel-delete"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setShowDeleteConfirm(false)
+                deleteTask(task.id)
+              }}
+              data-testid="confirm-delete"
+            >
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

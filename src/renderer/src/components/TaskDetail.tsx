@@ -56,6 +56,7 @@ export function TaskDetail(): React.JSX.Element | null {
   )
   const { resolved } = useTheme()
   const [isStarting, setIsStarting] = useState(false)
+  const [spawnError, setSpawnError] = useState<string | null>(null)
   const [modePerTask, setModePerTask] = useState<Record<string, DiffMode>>({})
 
   const activeTab = (selectedTaskId && tabPerTask[selectedTaskId]) || 'claude'
@@ -102,11 +103,16 @@ export function TaskDetail(): React.JSX.Element | null {
     const freshDir = useTaskStore.getState().getEffectiveDirectory(currentTaskId)
     if (!freshDir) return
     setIsStarting(true)
+    setSpawnError(null)
     try {
       const result = await window.api.ptySpawn(currentTaskId, freshDir, resolved)
       if (result.success) {
         startSession(currentTaskId)
+      } else {
+        setSpawnError(result.error ?? 'Failed to start session')
       }
+    } catch (err) {
+      setSpawnError(err instanceof Error ? err.message : 'Failed to start session')
     } finally {
       setIsStarting(false)
     }
@@ -115,7 +121,11 @@ export function TaskDetail(): React.JSX.Element | null {
   const handleStopSession = useCallback(async (): Promise<void> => {
     const currentTaskId = taskIdRef.current
     if (!currentTaskId) return
-    await window.api.ptyKill(currentTaskId)
+    try {
+      await window.api.ptyKill(currentTaskId)
+    } catch {
+      // Process may have already exited — proceed with cleanup
+    }
     stopSession(currentTaskId)
   }, [stopSession])
 
@@ -131,10 +141,17 @@ export function TaskDetail(): React.JSX.Element | null {
     const num = currentShellTabs.length + 1
     const tab: ShellTab = { id, label: `Shell ${num}`, sessionId }
 
-    addShellTab(currentTaskId, tab)
-    storeSetActiveTab(currentTaskId, `shell:${id}`)
-
-    await window.api.ptySpawnShell(sessionId, freshDir, resolved)
+    try {
+      const result = await window.api.ptySpawnShell(sessionId, freshDir, resolved)
+      if (result.success) {
+        addShellTab(currentTaskId, tab)
+        storeSetActiveTab(currentTaskId, `shell:${id}`)
+      } else {
+        setSpawnError(result.error ?? 'Failed to open shell')
+      }
+    } catch (err) {
+      setSpawnError(err instanceof Error ? err.message : 'Failed to open shell')
+    }
   }, [resolved, addShellTab, storeSetActiveTab])
 
   const handleCloseShellTab = useCallback(
@@ -261,6 +278,22 @@ export function TaskDetail(): React.JSX.Element | null {
           </DialogHeader>
           <DialogFooter>
             <Button onClick={clearDirError}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Session spawn error dialog */}
+      <Dialog open={!!spawnError} onOpenChange={(open) => !open && setSpawnError(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="size-4 text-destructive" />
+              Failed to start session
+            </DialogTitle>
+            <DialogDescription data-testid="spawn-error">{spawnError}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setSpawnError(null)}>OK</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

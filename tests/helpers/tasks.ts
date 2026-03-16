@@ -38,6 +38,7 @@ export async function deleteTask(page: Page, description: string): Promise<void>
   await hoverTask(page, description)
   const item = page.locator(`[data-task-description="${description}"]`)
   await item.getByTestId('delete-task').click()
+  await page.getByTestId('confirm-delete').click()
 }
 
 export async function addSubtask(

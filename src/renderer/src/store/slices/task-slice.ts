@@ -105,6 +105,20 @@ export const createTaskSlice: StateCreator<FullStore, [], [], TaskSlice> = (set,
     const idsToRemove = new Set(collectIds(id))
     const task = get().tasks.find((t) => t.id === id)
 
+    // Kill active sessions for the task and all its descendants
+    const { activeSessions, stopSession } = get()
+    for (const taskId of idsToRemove) {
+      if (activeSessions.has(taskId)) {
+        window.api.ptyKill(taskId).catch((err) => {
+          window.api.logError(
+            `Failed to kill session ${taskId} during task deletion`,
+            err instanceof Error ? err.stack : String(err)
+          )
+        })
+        stopSession(taskId)
+      }
+    }
+
     set((state) => {
       let tasks = state.tasks.filter((t) => !idsToRemove.has(t.id))
       if (task?.parentId) {

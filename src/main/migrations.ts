@@ -78,8 +78,15 @@ export function runMigrations(store: StoreAccess): void {
 
   for (const migration of migrations) {
     if (migration.version > currentVersion) {
-      migration.up(store)
-      store.set('schemaVersion', migration.version)
+      try {
+        migration.up(store)
+        store.set('schemaVersion', migration.version)
+      } catch (err) {
+        // Log and stop — partial migration is safer than crashing on startup.
+        // The app will still load with whatever schema version we reached.
+        console.error(`Migration v${migration.version} failed:`, err)
+        break
+      }
     }
   }
 }

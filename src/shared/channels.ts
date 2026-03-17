@@ -24,6 +24,15 @@ export const IPC = {
   STORE_GET_COMMENTS: 'store:get-comments',
   STORE_SAVE_COMMENTS: 'store:save-comments',
 
+  // Settings
+  STORE_GET_SETTINGS: 'store:get-settings',
+  STORE_SAVE_SETTINGS: 'store:save-settings',
+
+  // Worktree
+  WORKTREE_CREATE: 'worktree:create',
+  WORKTREE_ENSURE_HEALTHY: 'worktree:ensure-healthy',
+  WORKTREE_CLEANUP: 'worktree:cleanup',
+
   // Error reporting
   RENDERER_LOG_ERROR: 'renderer:log-error',
 

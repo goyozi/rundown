@@ -70,6 +70,19 @@ const migrations: Migration[] = [
         store.set('comments', {})
       }
     }
+  },
+  {
+    version: 4,
+    up: (store) => {
+      const settings = store.get('settings')
+      if (!settings) {
+        store.set('settings', {
+          theme: 'system',
+          worktreesEnabled: false,
+          worktreeBaseDir: '~/rundown/worktrees/'
+        })
+      }
+    }
   }
 ]
 

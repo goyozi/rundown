@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand'
 import type { FullStore } from '../task-store'
+import { collectTaskIds } from '../../lib/task-utils'
 
 interface OperationRequest {
   type: 'delete' | 'markDone'
@@ -25,7 +26,12 @@ export const createOperationRequestSlice: StateCreator<FullStore, [], [], Operat
     if (!task) return
     const hasChildren = get().getChildren(taskId).length > 0
     const hasShellTabs = (get().shellTabsPerTask[taskId] ?? []).length > 0
-    if (!hasChildren && !get().activeSessions.has(taskId) && !hasShellTabs) {
+
+    // Check if any task in the deletion set owns a worktree
+    const allIds = collectTaskIds(taskId, get().getTask)
+    const hasWorktrees = allIds.some((id) => get().getTask(id)?.worktree != null)
+
+    if (!hasChildren && !get().activeSessions.has(taskId) && !hasShellTabs && !hasWorktrees) {
       // No confirmation needed — delete immediately
       get().deleteTask(taskId)
       return

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Task, TaskGroup } from '../../../shared/types'
 import { debouncedLeadingTrailing } from '../lib/debounce'
+import { initThemeFromSettings } from '../hooks/use-theme'
 import { createTaskSlice, type TaskSlice } from './slices/task-slice'
 import { createGroupSlice, type GroupSlice } from './slices/group-slice'
 import { createSessionSlice, type SessionSlice } from './slices/session-slice'
@@ -9,6 +10,7 @@ import {
   createOperationRequestSlice,
   type OperationRequestSlice
 } from './slices/operation-request-slice'
+import { createSettingsSlice, type SettingsSlice } from './slices/settings-slice'
 
 export type { Task, TaskGroup }
 
@@ -25,6 +27,7 @@ export type FullStore = TaskSlice &
   SessionSlice &
   ShellTabSlice &
   OperationRequestSlice &
+  SettingsSlice &
   PersistenceSlice
 
 export const useTaskStore = create<FullStore>((...a) => {
@@ -36,19 +39,22 @@ export const useTaskStore = create<FullStore>((...a) => {
     ...createSessionSlice(...a),
     ...createShellTabSlice(...a),
     ...createOperationRequestSlice(...a),
+    ...createSettingsSlice(...a),
 
     loadError: null,
 
     loadTasks: async () => {
       try {
         set({ loadError: null })
-        const [tasks, groups, activeGroupId, rootTaskOrder] = await Promise.all([
+        const [tasks, groups, activeGroupId, rootTaskOrder, settings] = await Promise.all([
           window.api.getTasks(),
           window.api.getGroups(),
           window.api.getActiveGroupId(),
-          window.api.getRootTaskOrder()
+          window.api.getRootTaskOrder(),
+          window.api.getSettings()
         ])
-        set({ tasks, groups, activeGroupId, rootTaskOrder, loaded: true })
+        set({ tasks, groups, activeGroupId, rootTaskOrder, settings, loaded: true })
+        initThemeFromSettings(settings.theme)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         set({ loadError: message })

@@ -1,5 +1,5 @@
 import React from 'react'
-import { FolderOpen, CheckCircle2, Play, Square, Loader2 } from 'lucide-react'
+import { FolderOpen, CheckCircle2, Play, Square, Loader2, GitBranch, GitFork } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -16,6 +16,12 @@ interface TaskHeaderProps {
   onPickDirectory: () => void
   onStartSession: () => void
   onStopSession: () => void
+  worktreeName?: string
+  isWorktreeInherited?: boolean
+  worktreesEnabled?: boolean
+  onToggleOwnWorktree?: () => void
+  hasOwnWorktree?: boolean
+  isTogglingWorktree?: boolean
 }
 
 export function TaskHeader({
@@ -27,7 +33,13 @@ export function TaskHeader({
   isStarting,
   onPickDirectory,
   onStartSession,
-  onStopSession
+  onStopSession,
+  worktreeName,
+  isWorktreeInherited,
+  worktreesEnabled,
+  onToggleOwnWorktree,
+  hasOwnWorktree,
+  isTogglingWorktree
 }: TaskHeaderProps): React.ReactElement {
   const isInProgress = sessionActive
 
@@ -104,10 +116,55 @@ export function TaskHeader({
                 </button>
               )}
             </div>
+
+            {/* Worktree display */}
+            {worktreeName && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-fade-in-up-delay mt-1">
+                <GitBranch className="size-3.5 shrink-0 text-primary/50" />
+                <code
+                  className="font-mono text-[11px] bg-primary/5 text-primary/80 px-1.5 py-0.5 rounded"
+                  data-testid="worktree-name"
+                >
+                  {worktreeName}
+                </code>
+                {isWorktreeInherited && (
+                  <span
+                    className="italic text-muted-foreground/40 text-[11px]"
+                    data-testid="worktree-inherited"
+                  >
+                    inherited
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Session controls */}
           <div className="flex items-center gap-1.5 shrink-0">
+            {worktreesEnabled && task.parentId && onToggleOwnWorktree && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      'size-8',
+                      hasOwnWorktree
+                        ? 'text-primary hover:text-primary/80'
+                        : 'text-muted-foreground/50 hover:text-muted-foreground'
+                    )}
+                    onClick={onToggleOwnWorktree}
+                    disabled={isTogglingWorktree}
+                    data-testid="toggle-own-worktree"
+                  >
+                    <GitFork className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {hasOwnWorktree ? 'Inherit parent worktree' : 'Use own worktree'}
+                </TooltipContent>
+              </Tooltip>
+            )}
             {sessionActive ? (
               <Tooltip>
                 <TooltipTrigger asChild>

@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { useTaskStore } from '@/store/task-store'
 import { useShallow } from 'zustand/react/shallow'
+import { collectTaskIds } from '@/lib/task-utils'
 
 export function OperationConfirmDialog(): React.ReactElement | null {
   const {
@@ -38,6 +39,9 @@ export function OperationConfirmDialog(): React.ReactElement | null {
   const hasChildren = getChildren(task.id).length > 0
   const sessionActive = activeSessions.has(task.id)
 
+  // Check the full deletion set for owned worktrees (not just the top-level task)
+  const hasWorktrees = collectTaskIds(task.id, getTask).some((id) => getTask(id)?.worktree != null)
+
   if (pendingOperation.type === 'delete') {
     return (
       <Dialog open onOpenChange={(open) => !open && cancelOperation()}>
@@ -49,6 +53,7 @@ export function OperationConfirmDialog(): React.ReactElement | null {
                 ? `This will delete "${task.description}" and all its sub-tasks.`
                 : `This will delete "${task.description}".`}
               {sessionActive && ' The active session will be stopped.'}
+              {hasWorktrees && ' Associated worktrees will be removed.'}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

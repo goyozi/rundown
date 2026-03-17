@@ -1,5 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import type { Task, TaskGroup, Comment } from '../shared/types'
+import type { Task, TaskGroup, Comment, AppSettings, WorktreeRecord } from '../shared/types'
 
 interface RundownAPI {
   getTasks(): Promise<Task[]>
@@ -16,6 +16,17 @@ interface RundownAPI {
   saveComments(comments: Record<string, Comment[]>): Promise<void>
   logError(message: string, stack?: string): void
   openDirectory(): Promise<string | undefined>
+
+  // Settings
+  getSettings(): Promise<AppSettings>
+  saveSettings(settings: AppSettings): Promise<void>
+
+  // Worktree
+  worktreeCreate(repoPath: string, baseDir: string, taskId: string): Promise<WorktreeRecord>
+  worktreeEnsureHealthy(
+    worktree: WorktreeRecord
+  ): Promise<{ healthy: boolean; issues: string[]; repaired?: WorktreeRecord }>
+  worktreeCleanup(worktree: WorktreeRecord): Promise<void>
   validateRepo(dirPath: string): Promise<{ valid: boolean; error?: string }>
   detectBranch(
     dirPath: string

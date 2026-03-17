@@ -48,6 +48,20 @@ function setTheme(next: ThemeMode): void {
   notify()
 }
 
+/**
+ * Initialize theme from persisted settings (called once after settings load).
+ * Updates the module-level mode without triggering localStorage write.
+ */
+export function initThemeFromSettings(theme: ThemeMode): void {
+  if (theme !== mode) {
+    mode = theme
+    localStorage.setItem(STORAGE_KEY, theme)
+    apply(resolve(theme))
+    syncNativeTheme(theme)
+    notify()
+  }
+}
+
 function cycle(): void {
   const order: ThemeMode[] = ['light', 'dark', 'system']
   const idx = order.indexOf(mode)

@@ -1,7 +1,8 @@
 import type { StateCreator } from 'zustand'
-import type { Task } from '../../../../shared/types'
+import type { Task, WorktreeRecord } from '../../../../shared/types'
 import type { FullStore } from '../task-store'
 import { useCommentStore } from '../comment-store'
+import { collectTaskIds, normalizeDirPath } from '../../lib/task-utils'
 
 export interface TaskSlice {
   tasks: Task[]
@@ -24,6 +25,11 @@ export interface TaskSlice {
   getEffectiveDirectory: (id: string) => string | undefined
   isDescendant: (ancestorId: string, descendantId: string) => boolean
   getMaxSubtreeDepth: (id: string) => number
+  getEffectiveWorktree: (id: string) => WorktreeRecord | undefined
+  getWorktreeOwnerTaskId: (id: string) => string | undefined
+  setWorktreeOnTask: (id: string, worktree: WorktreeRecord) => void
+  setInheritWorktree: (id: string, inherit: boolean) => void
+  clearWorktreeOnTask: (id: string) => void
 }
 
 export const createTaskSlice: StateCreator<FullStore, [], [], TaskSlice> = (set, get) => ({
@@ -96,15 +102,24 @@ export const createTaskSlice: StateCreator<FullStore, [], [], TaskSlice> = (set,
   },
 
   deleteTask: (id) => {
-    const collectIds = (taskId: string): string[] => {
-      const task = get().tasks.find((t) => t.id === taskId)
-      if (!task) return []
-      const childIds = task.children.flatMap(collectIds)
-      return [taskId, ...childIds]
-    }
-
-    const idsToRemove = new Set(collectIds(id))
+    const allIds = collectTaskIds(id, get().getTask)
+    const idsToRemove = new Set(allIds)
     const task = get().tasks.find((t) => t.id === id)
+
+    // Clean up worktrees bottom-up (children before parents). collectIds does DFS
+    // in parent-before-children order, so reversing gives us the right sequence.
+    const reversedIds = [...allIds].reverse()
+    for (const taskId of reversedIds) {
+      const t = get().tasks.find((tt) => tt.id === taskId)
+      if (t?.worktree) {
+        window.api.worktreeCleanup(t.worktree).catch((err) => {
+          window.api.logError(
+            `Failed to clean up worktree for task ${taskId}`,
+            err instanceof Error ? err.stack : String(err)
+          )
+        })
+      }
+    }
 
     // Clean up comments for deleted tasks
     const commentStore = useCommentStore.getState()
@@ -299,5 +314,67 @@ export const createTaskSlice: StateCreator<FullStore, [], [], TaskSlice> = (set,
     const task = get().tasks.find((t) => t.id === id)
     if (!task || task.children.length === 0) return 0
     return 1 + Math.max(...task.children.map((cid) => get().getMaxSubtreeDepth(cid)))
+  },
+
+  getEffectiveWorktree: (id) => {
+    if (!get().settings.worktreesEnabled) return undefined
+    const { tasks } = get()
+    const startDir = normalizeDirPath(get().getEffectiveDirectory(id))
+    let current = tasks.find((t) => t.id === id)
+    while (current) {
+      if (current.worktree) {
+        // Only inherit if the worktree belongs to the same repo
+        return normalizeDirPath(current.worktree.repoPath) === startDir
+          ? current.worktree
+          : undefined
+      }
+      // If this task explicitly opts out of inheritance and has no worktree, stop
+      if (current.inheritWorktree === false) return undefined
+      if (!current.parentId) return undefined
+      current = tasks.find((t) => t.id === current!.parentId)
+    }
+    return undefined
+  },
+
+  getWorktreeOwnerTaskId: (id) => {
+    if (!get().settings.worktreesEnabled) return undefined
+    const { tasks } = get()
+    const startDir = normalizeDirPath(get().getEffectiveDirectory(id))
+    let current = tasks.find((t) => t.id === id)
+    while (current) {
+      // If this task already owns a worktree for the same repo, it's the owner
+      if (current.worktree) {
+        return normalizeDirPath(current.worktree.repoPath) === startDir ? current.id : undefined
+      }
+      // If this task opts out of inheritance, it should own its own worktree
+      if (current.inheritWorktree === false) return current.id
+      if (!current.parentId) return current.id
+      // Walk up, but only if we're still inheriting
+      const parent = tasks.find((t) => t.id === current!.parentId)
+      if (!parent) return current.id
+      current = parent
+    }
+    return undefined
+  },
+
+  setWorktreeOnTask: (id, worktree) => {
+    set((state) => ({
+      tasks: state.tasks.map((t) => (t.id === id ? { ...t, worktree } : t))
+    }))
+    get().persist()
+  },
+
+  setInheritWorktree: (id, inherit) => {
+    set((state) => ({
+      tasks: state.tasks.map((t) => (t.id === id ? { ...t, inheritWorktree: inherit } : t))
+    }))
+    get().persist()
+  },
+
+  clearWorktreeOnTask: (id) => {
+    set((state) => ({
+      tasks: state.tasks.map((t) => (t.id === id ? { ...t, worktree: undefined } : t))
+    }))
+    get().persist()
   }
 })

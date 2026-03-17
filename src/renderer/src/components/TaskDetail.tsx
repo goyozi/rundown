@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useRef } from 'react'
-import { ListTodo, Terminal, AlertCircle, BotMessageSquare } from 'lucide-react'
+import { ListTodo, Terminal, AlertCircle, AlertTriangle, BotMessageSquare } from 'lucide-react'
 import { useTaskStore } from '@/store/task-store'
 import { useShallow } from 'zustand/react/shallow'
 import { useTheme } from '@/hooks/use-theme'
 import { useDirectoryPicker } from '@/hooks/use-directory-picker'
+import { useWorktreeSession } from '@/hooks/use-worktree-session'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -37,7 +38,10 @@ export function TaskDetail(): React.JSX.Element | null {
     storeSetActiveTab,
     shellTabsPerTask,
     addShellTab,
-    removeShellTab
+    removeShellTab,
+    effectiveWorktree,
+    worktreeOwnerTaskId,
+    settings
   } = useTaskStore(
     useShallow((s) => ({
       selectedTaskId: s.selectedTaskId,
@@ -51,10 +55,22 @@ export function TaskDetail(): React.JSX.Element | null {
       storeSetActiveTab: s.setActiveTab,
       shellTabsPerTask: s.shellTabsPerTask,
       addShellTab: s.addShellTab,
-      removeShellTab: s.removeShellTab
+      removeShellTab: s.removeShellTab,
+      effectiveWorktree: s.selectedTaskId ? s.getEffectiveWorktree(s.selectedTaskId) : undefined,
+      worktreeOwnerTaskId: s.selectedTaskId
+        ? s.getWorktreeOwnerTaskId(s.selectedTaskId)
+        : undefined,
+      settings: s.settings
     }))
   )
   const { resolved } = useTheme()
+  const {
+    resolveSessionCwd,
+    toggleOwnWorktree,
+    isTogglingWorktree,
+    worktreeWarning,
+    clearWorktreeWarning
+  } = useWorktreeSession()
   const [isStarting, setIsStarting] = useState(false)
   const [spawnError, setSpawnError] = useState<string | null>(null)
   const [modePerTask, setModePerTask] = useState<Record<string, DiffMode>>({})
@@ -97,6 +113,11 @@ export function TaskDetail(): React.JSX.Element | null {
     }
   })
 
+  const handleToggleOwnWorktree = useCallback(async (): Promise<void> => {
+    const currentTaskId = taskIdRef.current
+    if (currentTaskId) await toggleOwnWorktree(currentTaskId)
+  }, [toggleOwnWorktree])
+
   const handleStartSession = useCallback(async (): Promise<void> => {
     const currentTaskId = taskIdRef.current
     if (!currentTaskId || isStarting) return
@@ -105,7 +126,8 @@ export function TaskDetail(): React.JSX.Element | null {
     setIsStarting(true)
     setSpawnError(null)
     try {
-      const result = await window.api.ptySpawn(currentTaskId, freshDir, resolved)
+      const cwd = (await resolveSessionCwd(currentTaskId)) ?? freshDir
+      const result = await window.api.ptySpawn(currentTaskId, cwd, resolved)
       if (result.success) {
         startSession(currentTaskId)
       } else {
@@ -116,7 +138,7 @@ export function TaskDetail(): React.JSX.Element | null {
     } finally {
       setIsStarting(false)
     }
-  }, [isStarting, resolved, startSession])
+  }, [isStarting, resolved, startSession, resolveSessionCwd])
 
   const handleStopSession = useCallback(async (): Promise<void> => {
     const currentTaskId = taskIdRef.current
@@ -142,7 +164,8 @@ export function TaskDetail(): React.JSX.Element | null {
     const tab: ShellTab = { id, label: `Shell ${num}`, sessionId }
 
     try {
-      const result = await window.api.ptySpawnShell(sessionId, freshDir, resolved)
+      const cwd = (await resolveSessionCwd(currentTaskId)) ?? freshDir
+      const result = await window.api.ptySpawnShell(sessionId, cwd, resolved)
       if (result.success) {
         addShellTab(currentTaskId, tab)
         storeSetActiveTab(currentTaskId, `shell:${id}`)
@@ -152,7 +175,7 @@ export function TaskDetail(): React.JSX.Element | null {
     } catch (err) {
       setSpawnError(err instanceof Error ? err.message : 'Failed to open shell')
     }
-  }, [resolved, addShellTab, storeSetActiveTab])
+  }, [resolved, addShellTab, storeSetActiveTab, resolveSessionCwd])
 
   const handleCloseShellTab = useCallback(
     async (shellTab: ShellTab): Promise<void> => {
@@ -205,6 +228,9 @@ export function TaskDetail(): React.JSX.Element | null {
   const isDone = task.state === 'done'
   const isInherited = !task.directory && !!effectiveDir
   const sessionActive = activeSessions.has(task.id)
+  // Single source of truth for the worktree-aware working directory
+  const workingDir =
+    settings.worktreesEnabled && effectiveWorktree ? effectiveWorktree.path : effectiveDir
 
   return (
     <div className="flex flex-col h-full" data-testid="task-detail">
@@ -218,6 +244,12 @@ export function TaskDetail(): React.JSX.Element | null {
         onPickDirectory={handlePickDirectory}
         onStartSession={handleStartSession}
         onStopSession={handleStopSession}
+        worktreeName={effectiveWorktree?.name}
+        isWorktreeInherited={effectiveWorktree ? worktreeOwnerTaskId !== selectedTaskId : undefined}
+        worktreesEnabled={settings.worktreesEnabled}
+        onToggleOwnWorktree={task.parentId ? handleToggleOwnWorktree : undefined}
+        hasOwnWorktree={task.inheritWorktree === false}
+        isTogglingWorktree={isTogglingWorktree}
       />
 
       <Separator />
@@ -233,9 +265,9 @@ export function TaskDetail(): React.JSX.Element | null {
       />
 
       {/* Content area */}
-      {activeTab === 'review' && effectiveDir ? (
+      {activeTab === 'review' && workingDir ? (
         <ReviewPanel
-          directory={effectiveDir}
+          directory={workingDir}
           taskId={task.id}
           sessionActive={sessionActive}
           mode={diffMode}
@@ -298,6 +330,22 @@ export function TaskDetail(): React.JSX.Element | null {
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setSpawnError(null)}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Worktree warning dialog */}
+      <Dialog open={!!worktreeWarning} onOpenChange={(open) => !open && clearWorktreeWarning()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-warning" />
+              Worktree issue
+            </DialogTitle>
+            <DialogDescription data-testid="worktree-warning">{worktreeWarning}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={clearWorktreeWarning}>OK</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

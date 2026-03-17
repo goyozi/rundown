@@ -6,6 +6,7 @@ import electronUpdater from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import { registerStoreHandlers, getWindowState, saveWindowState } from './store'
 import { registerPtyHandlers, killAllSessions, getActiveSessionCount } from './pty'
+import { registerWorktreeHandlers } from './worktree'
 import log from './logger'
 import { ThemeSchema } from './validation'
 import { IPC } from '../shared/channels'
@@ -135,6 +136,7 @@ app.whenReady().then(() => {
 
   registerStoreHandlers()
   registerPtyHandlers(() => mainWindow)
+  registerWorktreeHandlers()
 
   safeHandle(IPC.THEME_SET, (_event, theme: unknown) => {
     nativeTheme.themeSource = ThemeSchema.parse(theme)

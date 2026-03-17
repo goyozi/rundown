@@ -1,10 +1,9 @@
 import { dialog, BrowserWindow } from 'electron'
 import Store from 'electron-store'
-import simpleGit from 'simple-git'
 import { runMigrations, type StoreAccess } from './migrations'
 import { existsSync } from 'fs'
 import { isAbsolute } from 'path'
-import type { Task, TaskGroup, Comment } from '../shared/types'
+import type { Task, TaskGroup, Comment, AppSettings } from '../shared/types'
 import {
   TasksArraySchema,
   GroupsArraySchema,
@@ -13,14 +12,12 @@ import {
   RootTaskOrderSchema,
   DirPathSchema,
   BranchNameSchema,
-  CommentsPoolSchema
+  CommentsPoolSchema,
+  AppSettingsSchema
 } from './validation'
 import { IPC } from '../shared/channels'
 import { safeHandle } from './ipc-utils'
-
-function createGit(dir: string): ReturnType<typeof simpleGit> {
-  return simpleGit(dir, { timeout: { block: 15000 } })
-}
+import { createGit, detectDefaultBranch } from './git-utils'
 
 interface WindowState {
   x?: number
@@ -38,6 +35,7 @@ interface StoreSchema {
   sidebarWidth: number
   rootTaskOrder: Record<string, string[]>
   comments: Record<string, Comment[]>
+  settings: AppSettings
   schemaVersion: number
 }
 
@@ -56,7 +54,12 @@ const storeOptions: ConstructorParameters<typeof Store<StoreSchema>>[0] = {
     sidebarWidth: 320,
     rootTaskOrder: {},
     comments: {},
-    schemaVersion: 3
+    settings: {
+      theme: 'system',
+      worktreesEnabled: false,
+      worktreeBaseDir: '~/rundown/worktrees/'
+    },
+    schemaVersion: 4
   }
 }
 
@@ -159,15 +162,7 @@ export function registerStoreHandlers(): void {
         const git = createGit(dir)
         const branchSummary = await git.branch()
         const current = branchSummary.current
-
-        // Auto-detect main vs master: prefer 'main' if both exist
-        let mainBranch: string | null = null
-        const allBranches = branchSummary.all
-        if (allBranches.includes('main')) {
-          mainBranch = 'main'
-        } else if (allBranches.includes('master')) {
-          mainBranch = 'master'
-        }
+        const mainBranch = await detectDefaultBranch(git).catch(() => null)
 
         return { current, mainBranch }
       } catch {
@@ -234,5 +229,13 @@ export function registerStoreHandlers(): void {
 
   safeHandle(IPC.STORE_SAVE_COMMENTS, (_event, comments: unknown): void => {
     store.set('comments', CommentsPoolSchema.parse(comments))
+  })
+
+  safeHandle(IPC.STORE_GET_SETTINGS, (): AppSettings => {
+    return store.get('settings')
+  })
+
+  safeHandle(IPC.STORE_SAVE_SETTINGS, (_event, settings: unknown): void => {
+    store.set('settings', AppSettingsSchema.parse(settings))
   })
 }

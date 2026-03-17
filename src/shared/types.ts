@@ -1,3 +1,18 @@
+export interface WorktreeRecord {
+  worktreeId: string
+  name: string // "brave-falcon-a3f2"
+  path: string // absolute path to worktree dir
+  branchName: string // "worktree/brave-falcon-a3f2"
+  repoPath: string // parent git repo path
+  createdAt: string
+}
+
+export interface AppSettings {
+  theme: 'light' | 'dark' | 'system'
+  worktreesEnabled: boolean
+  worktreeBaseDir: string // default "~/rundown/worktrees/"
+}
+
 export interface Task {
   id: string
   description: string
@@ -7,6 +22,8 @@ export interface Task {
   children: string[]
   createdAt: string
   groupId: string
+  inheritWorktree?: boolean // default true when absent
+  worktree?: WorktreeRecord // only on tasks that OWN a worktree
 }
 
 export interface TaskGroup {

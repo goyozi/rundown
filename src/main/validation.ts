@@ -1,5 +1,20 @@
 import { z } from 'zod'
 
+export const WorktreeRecordSchema = z.object({
+  worktreeId: z.string(),
+  name: z.string(),
+  path: z.string(),
+  branchName: z.string(),
+  repoPath: z.string(),
+  createdAt: z.string()
+})
+
+export const AppSettingsSchema = z.object({
+  theme: z.enum(['light', 'dark', 'system']),
+  worktreesEnabled: z.boolean(),
+  worktreeBaseDir: z.string()
+})
+
 export const TaskSchema = z.object({
   id: z.string(),
   description: z.string(),
@@ -8,7 +23,9 @@ export const TaskSchema = z.object({
   parentId: z.string().optional(),
   children: z.array(z.string()),
   createdAt: z.string(),
-  groupId: z.string()
+  groupId: z.string(),
+  inheritWorktree: z.boolean().optional(),
+  worktree: WorktreeRecordSchema.optional()
 })
 
 export const TaskGroupSchema = z.object({

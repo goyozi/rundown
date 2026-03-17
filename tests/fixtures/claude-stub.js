@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Simulates a Claude Code session for testing.
 // Reads CLAUDE_STUB_SCRIPT env var to pick a behaviour preset.
+process.stdout.write('cwd:' + process.cwd() + ':endcwd\n')
 const preset = process.env.CLAUDE_STUB_SCRIPT ?? 'echo'
 
 switch (preset) {

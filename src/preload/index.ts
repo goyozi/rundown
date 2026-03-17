@@ -24,6 +24,7 @@ const api = {
   // Settings
   getSettings: () => ipcRenderer.invoke(IPC.STORE_GET_SETTINGS),
   saveSettings: (settings: AppSettings) => ipcRenderer.invoke(IPC.STORE_SAVE_SETTINGS, settings),
+  setSessionResume: (enabled: boolean) => ipcRenderer.invoke(IPC.SESSION_RESUME_SET, enabled),
 
   // Worktree
   worktreeCreate: (repoPath: string, baseDir: string, taskId: string) =>

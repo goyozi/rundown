@@ -6,13 +6,15 @@ export interface SettingsSlice {
   settings: AppSettings
   loadSettings: () => Promise<void>
   updateSettings: (partial: Partial<AppSettings>) => void
+  setSessionResume: (enabled: boolean) => void
 }
 
 export const createSettingsSlice: StateCreator<FullStore, [], [], SettingsSlice> = (set, get) => ({
   settings: {
     theme: 'system',
     worktreesEnabled: false,
-    worktreeBaseDir: '~/rundown/worktrees/'
+    worktreeBaseDir: '~/rundown/worktrees/',
+    sessionResume: false
   },
 
   loadSettings: async () => {
@@ -31,6 +33,19 @@ export const createSettingsSlice: StateCreator<FullStore, [], [], SettingsSlice>
     window.api.saveSettings(updated).catch((err) => {
       window.api.logError(
         'Failed to persist settings',
+        err instanceof Error ? err.stack : String(err)
+      )
+    })
+  },
+
+  setSessionResume: (enabled) => {
+    const previous = get().settings.sessionResume
+    set({ settings: { ...get().settings, sessionResume: enabled } })
+    window.api.setSessionResume(enabled).catch((err) => {
+      // Revert to the value before this call, not !enabled, to avoid races
+      set({ settings: { ...get().settings, sessionResume: previous } })
+      window.api.logError(
+        'Failed to set session resume',
         err instanceof Error ? err.stack : String(err)
       )
     })

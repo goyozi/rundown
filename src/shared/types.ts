@@ -11,6 +11,7 @@ export interface AppSettings {
   theme: 'light' | 'dark' | 'system'
   worktreesEnabled: boolean
   worktreeBaseDir: string // default "~/rundown/worktrees/"
+  sessionResume: boolean
 }
 
 export interface Task {
@@ -24,6 +25,7 @@ export interface Task {
   groupId: string
   inheritWorktree?: boolean // default true when absent
   worktree?: WorktreeRecord // only on tasks that OWN a worktree
+  sessionId?: string
 }
 
 export interface TaskGroup {

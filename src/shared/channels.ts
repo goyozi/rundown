@@ -33,6 +33,9 @@ export const IPC = {
   WORKTREE_ENSURE_HEALTHY: 'worktree:ensure-healthy',
   WORKTREE_CLEANUP: 'worktree:cleanup',
 
+  // Session Resume
+  SESSION_RESUME_SET: 'session-resume:set',
+
   // Error reporting
   RENDERER_LOG_ERROR: 'renderer:log-error',
 

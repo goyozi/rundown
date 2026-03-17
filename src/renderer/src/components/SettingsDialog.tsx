@@ -16,10 +16,11 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): React.JSX.Element {
   const { mode, setTheme } = useTheme()
-  const { settings, updateSettings } = useTaskStore(
+  const { settings, updateSettings, setSessionResume } = useTaskStore(
     useShallow((s) => ({
       settings: s.settings,
-      updateSettings: s.updateSettings
+      updateSettings: s.updateSettings,
+      setSessionResume: s.setSessionResume
     }))
   )
 
@@ -134,6 +135,31 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
                   <p className="text-[11px] text-destructive">Path must start with / or ~/</p>
                 )}
             </div>
+          </div>
+
+          {/* Session Resume toggle */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <label htmlFor="session-resume-toggle" className="text-sm font-medium">
+                  Session Resume
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Resume previous Claude Code sessions when returning to a task
+                </p>
+              </div>
+              <Switch
+                id="session-resume-toggle"
+                checked={settings.sessionResume}
+                onCheckedChange={(checked) => setSessionResume(checked)}
+                data-testid="session-resume-toggle"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground/70">
+              Enabling this feature will modify your Claude Code configuration (
+              <code className="font-mono">~/.claude/settings.json</code>) to register a Rundown
+              session hook. Disabling it will remove the hook.
+            </p>
           </div>
         </div>
       </DialogContent>

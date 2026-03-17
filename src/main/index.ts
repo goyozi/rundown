@@ -4,10 +4,24 @@ import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import electronUpdater from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
-import { registerStoreHandlers, getWindowState, saveWindowState } from './store'
+import {
+  registerStoreHandlers,
+  getWindowState,
+  saveWindowState,
+  getSessionStore,
+  setServerPort,
+  getServerPort,
+  getTaskSessionId,
+  getSettings,
+  setSettingsValue
+} from './store'
+import { createSessionServer } from './server'
+import { enableSessionHook, disableSessionHook, isSessionHookEnabled } from './claude-config'
+import { homedir } from 'os'
 import { registerPtyHandlers, killAllSessions, getActiveSessionCount } from './pty'
 import { registerWorktreeHandlers } from './worktree'
 import log from './logger'
+import { z } from 'zod'
 import { ThemeSchema } from './validation'
 import { IPC } from '../shared/channels'
 import { safeHandle } from './ipc-utils'
@@ -16,6 +30,7 @@ import { safeHandle } from './ipc-utils'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 let mainWindow: BrowserWindow | null = null
+let sessionServer: ReturnType<typeof createSessionServer> | null = null
 
 function createWindow(): void {
   const windowState = getWindowState()
@@ -110,7 +125,7 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.goyozi.rundown')
 
@@ -135,7 +150,11 @@ app.whenReady().then(() => {
   })
 
   registerStoreHandlers()
-  registerPtyHandlers(() => mainWindow)
+  registerPtyHandlers(() => mainWindow, {
+    getTaskSessionId,
+    getServerPort,
+    isSessionResumeEnabled: () => getSettings().sessionResume
+  })
   registerWorktreeHandlers()
 
   safeHandle(IPC.THEME_SET, (_event, theme: unknown) => {
@@ -145,6 +164,32 @@ app.whenReady().then(() => {
   ipcMain.on(IPC.RENDERER_LOG_ERROR, (_event, message: unknown, stack?: unknown) => {
     log.error('[Renderer]', message, stack ?? '')
   })
+
+  const claudeSettingsPath = join(homedir(), '.claude', 'settings.json')
+  const cliBinaryPath = app.isPackaged
+    ? join(app.getAppPath(), 'resources', 'rundown-cli')
+    : join(app.getAppPath(), 'cli', 'rundown-cli')
+
+  safeHandle(IPC.SESSION_RESUME_SET, (_event, enabled: unknown) => {
+    const value = z.boolean().parse(enabled)
+    if (value) {
+      enableSessionHook(claudeSettingsPath, cliBinaryPath)
+    } else {
+      disableSessionHook(claudeSettingsPath)
+    }
+    setSettingsValue('sessionResume', value)
+  })
+
+  // Startup sync: ensure electron-store matches actual ~/.claude/settings.json state
+  const fileHasHook = isSessionHookEnabled(claudeSettingsPath)
+  const storeHasHook = getSettings().sessionResume
+  if (fileHasHook !== storeHasHook) {
+    setSettingsValue('sessionResume', fileHasHook)
+  }
+
+  sessionServer = createSessionServer(getSessionStore())
+  const { port } = await sessionServer.start()
+  setServerPort(port)
 
   createWindow()
 
@@ -176,6 +221,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   killAllSessions()
+  sessionServer?.stop()
 })
 
 // In this file you can include the rest of your app's specific main process

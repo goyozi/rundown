@@ -83,6 +83,15 @@ const migrations: Migration[] = [
         })
       }
     }
+  },
+  {
+    version: 5,
+    up: (store) => {
+      const settings = store.get('settings') as Record<string, unknown> | undefined
+      if (settings && settings.sessionResume === undefined) {
+        store.set('settings', { ...settings, sessionResume: false })
+      }
+    }
   }
 ]
 

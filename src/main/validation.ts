@@ -12,7 +12,8 @@ export const WorktreeRecordSchema = z.object({
 export const AppSettingsSchema = z.object({
   theme: z.enum(['light', 'dark', 'system']),
   worktreesEnabled: z.boolean(),
-  worktreeBaseDir: z.string()
+  worktreeBaseDir: z.string(),
+  sessionResume: z.boolean()
 })
 
 export const TaskSchema = z.object({
@@ -25,7 +26,8 @@ export const TaskSchema = z.object({
   createdAt: z.string(),
   groupId: z.string(),
   inheritWorktree: z.boolean().optional(),
-  worktree: WorktreeRecordSchema.optional()
+  worktree: WorktreeRecordSchema.optional(),
+  sessionId: z.string().optional()
 })
 
 export const TaskGroupSchema = z.object({
@@ -51,6 +53,12 @@ export const CommentSchema = z.object({
   body: z.string()
 })
 export const CommentsPoolSchema = z.record(z.string(), z.array(CommentSchema))
+
+// Session report (HTTP endpoint payload)
+export const SessionReportSchema = z.object({
+  taskId: z.string().min(1),
+  sessionId: z.string().min(1)
+})
 
 // PTY validation
 export const SessionIdSchema = z.string().min(1)

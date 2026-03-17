@@ -92,12 +92,39 @@ export function killAllSessions(): void {
   persistSessionPids()
 }
 
+export interface SessionResumeDeps {
+  getTaskSessionId: (taskId: string) => string | undefined
+  getServerPort: () => number
+  isSessionResumeEnabled: () => boolean
+}
+
+export function buildClaudeSpawnParams(
+  taskId: string,
+  deps?: SessionResumeDeps
+): { args: string[]; extraEnv: Record<string, string> } {
+  const args: string[] = []
+  const extraEnv: Record<string, string> = {}
+
+  if (deps?.isSessionResumeEnabled()) {
+    extraEnv.RUNDOWN_TASK_ID = taskId
+    extraEnv.RUNDOWN_API_PORT = String(deps.getServerPort())
+    const existingSessionId = deps.getTaskSessionId(taskId)
+    if (existingSessionId) {
+      args.push('--resume', existingSessionId)
+    }
+  }
+
+  return { args, extraEnv }
+}
+
 function spawnSession(
   id: string,
   cwd: string,
   theme: string,
   shell: string,
-  getMainWindow: () => BrowserWindow | null
+  getMainWindow: () => BrowserWindow | null,
+  args: string[] = [],
+  extraEnv: Record<string, string> = {}
 ): { success: boolean; error?: string } {
   if (sessions.has(id)) {
     return { success: false, error: 'Session already exists' }
@@ -108,12 +135,12 @@ function spawnSession(
   const colorfgbg = theme === 'light' ? '0;15' : '15;0'
 
   try {
-    const ptyProcess = pty.spawn(shell, [], {
+    const ptyProcess = pty.spawn(shell, args, {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
       cwd,
-      env: buildSafeEnv({ COLORFGBG: colorfgbg })
+      env: buildSafeEnv({ COLORFGBG: colorfgbg, ...extraEnv })
     })
 
     sessions.set(id, ptyProcess)
@@ -141,7 +168,10 @@ function spawnSession(
   }
 }
 
-export function registerPtyHandlers(getMainWindow: () => BrowserWindow | null): void {
+export function registerPtyHandlers(
+  getMainWindow: () => BrowserWindow | null,
+  sessionResumeDeps?: SessionResumeDeps
+): void {
   cleanupOrphanedSessions()
 
   safeHandle(
@@ -156,7 +186,8 @@ export function registerPtyHandlers(getMainWindow: () => BrowserWindow | null): 
       const cwdStr = CwdSchema.parse(cwd)
       const themeStr = PtyThemeSchema.parse(theme)
       const claudeBin = process.env.CLAUDE_BIN ?? 'claude'
-      return spawnSession(id, cwdStr, themeStr, claudeBin, getMainWindow)
+      const { args, extraEnv } = buildClaudeSpawnParams(id, sessionResumeDeps)
+      return spawnSession(id, cwdStr, themeStr, claudeBin, getMainWindow, args, extraEnv)
     }
   )
 

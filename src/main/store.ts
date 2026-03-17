@@ -36,6 +36,7 @@ interface StoreSchema {
   rootTaskOrder: Record<string, string[]>
   comments: Record<string, Comment[]>
   settings: AppSettings
+  serverPort: number
   schemaVersion: number
 }
 
@@ -57,9 +58,11 @@ const storeOptions: ConstructorParameters<typeof Store<StoreSchema>>[0] = {
     settings: {
       theme: 'system',
       worktreesEnabled: false,
-      worktreeBaseDir: '~/rundown/worktrees/'
+      worktreeBaseDir: '~/rundown/worktrees/',
+      sessionResume: false
     },
-    schemaVersion: 4
+    serverPort: 0,
+    schemaVersion: 5
   }
 }
 
@@ -77,6 +80,41 @@ export function getWindowState(): WindowState {
 
 export function saveWindowState(state: WindowState): void {
   store.set('windowState', state)
+}
+
+export interface SessionStore {
+  getTasks(): Task[]
+  setTasks(tasks: Task[]): void
+}
+
+export function getSessionStore(): SessionStore {
+  return {
+    getTasks: () => store.get('tasks'),
+    setTasks: (tasks) => store.set('tasks', tasks as Task[])
+  }
+}
+
+export function setServerPort(port: number): void {
+  store.set('serverPort', port)
+}
+
+export function getSettings(): AppSettings {
+  return store.get('settings')
+}
+
+export function getServerPort(): number {
+  return store.get('serverPort')
+}
+
+export function getTaskSessionId(taskId: string): string | undefined {
+  const tasks = store.get('tasks')
+  return tasks.find((t) => t.id === taskId)?.sessionId
+}
+
+export function setSettingsValue<K extends keyof AppSettings>(key: K, value: AppSettings[K]): void {
+  const settings = store.get('settings')
+  settings[key] = value
+  store.set('settings', settings)
 }
 
 export function registerStoreHandlers(): void {

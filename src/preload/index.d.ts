@@ -20,6 +20,7 @@ interface RundownAPI {
   // Settings
   getSettings(): Promise<AppSettings>
   saveSettings(settings: AppSettings): Promise<void>
+  setSessionResume(enabled: boolean): Promise<void>
 
   // Worktree
   worktreeCreate(repoPath: string, baseDir: string, taskId: string): Promise<WorktreeRecord>

@@ -129,3 +129,24 @@ export async function waitForWorktreeCleanup(
   const actual = getWorktreeDirs(baseDir).length
   expect(actual).toBe(expectedCount)
 }
+
+/** Poll until a branch no longer exists in the repo, with timeout.
+ *  Worktree cleanup is fire-and-forget: the directory disappears before
+ *  `git branch -D` finishes, so callers need to poll for the branch too. */
+export async function waitForBranchCleanup(
+  repoDir: string,
+  branchName: string,
+  timeoutMs = 5000
+): Promise<void> {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    const output = execSync(`git branch --list ${branchName}`, {
+      cwd: repoDir,
+      encoding: 'utf-8'
+    }).trim()
+    if (output === '') return
+    await new Promise((r) => setTimeout(r, 200))
+  }
+  // Final assertion to produce a clear error message
+  assertBranchNotExists(repoDir, branchName)
+}

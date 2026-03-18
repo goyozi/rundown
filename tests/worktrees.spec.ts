@@ -10,12 +10,12 @@ import {
   isWorktreeInherited,
   assertWorktreeExists,
   assertWorktreeNotExists,
-  assertBranchNotExists,
   createWorktreeBaseDir,
   getWorktreeDirs,
   getTerminalCwd,
   normalizePath,
-  waitForWorktreeCleanup
+  waitForWorktreeCleanup,
+  waitForBranchCleanup
 } from './helpers/worktrees'
 
 let app: ElectronApplication
@@ -336,10 +336,10 @@ test.describe('worktree cleanup', () => {
     // Delete the task
     await deleteTask(page, 'Delete me')
 
-    // Wait for async cleanup
+    // Wait for async cleanup (directory disappears before branch is deleted)
     await waitForWorktreeCleanup(wtBase, 0)
     assertWorktreeNotExists(repoDir, name!)
-    assertBranchNotExists(repoDir, `worktree/${name}`)
+    await waitForBranchCleanup(repoDir, `worktree/${name}`)
   })
 
   test('cascade deletion cleans up all owned worktrees (#16, #18)', async () => {

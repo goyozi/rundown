@@ -65,6 +65,9 @@ jobs:
 
       - run: pnpm install
 
+      - name: Set version from run number
+        run: pnpm pkg set "version=1.0.${{ github.run_number }}"
+
       - name: Import Apple signing certificate
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}

@@ -169,7 +169,7 @@ app.whenReady().then(async () => {
 
   const claudeSettingsPath = join(homedir(), '.claude', 'settings.json')
   const cliBinaryPath = app.isPackaged
-    ? join(app.getAppPath(), 'resources', 'rundown-cli')
+    ? join(process.resourcesPath, 'rundown-cli')
     : join(app.getAppPath(), 'cli', 'rundown-cli')
 
   safeHandle(IPC.SESSION_RESUME_SET, (_event, enabled: unknown) => {

@@ -79,7 +79,7 @@ const migrations: Migration[] = [
         store.set('settings', {
           theme: 'system',
           worktreesEnabled: false,
-          worktreeBaseDir: '~/rundown/worktrees/'
+          worktreeBaseDir: '~/.rundown/worktrees/'
         })
       }
     }

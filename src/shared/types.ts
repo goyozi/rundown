@@ -10,7 +10,7 @@ export interface WorktreeRecord {
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system'
   worktreesEnabled: boolean
-  worktreeBaseDir: string // default "~/rundown/worktrees/"
+  worktreeBaseDir: string // default "~/.rundown/worktrees/"
   sessionResume: boolean
 }
 

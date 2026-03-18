@@ -116,7 +116,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
                   className={`h-8 text-xs font-mono ${
                     !isValidWorktreeDir(settings.worktreeBaseDir) ? 'border-destructive' : ''
                   }`}
-                  placeholder="~/rundown/worktrees/"
+                  placeholder="~/.rundown/worktrees/"
                   data-testid="worktree-dir-input"
                 />
                 <Button

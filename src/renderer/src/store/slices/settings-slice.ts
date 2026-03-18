@@ -13,7 +13,7 @@ export const createSettingsSlice: StateCreator<FullStore, [], [], SettingsSlice>
   settings: {
     theme: 'system',
     worktreesEnabled: false,
-    worktreeBaseDir: '~/rundown/worktrees/',
+    worktreeBaseDir: '~/.rundown/worktrees/',
     sessionResume: false
   },
 

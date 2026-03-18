@@ -58,7 +58,7 @@ const storeOptions: ConstructorParameters<typeof Store<StoreSchema>>[0] = {
     settings: {
       theme: 'system',
       worktreesEnabled: false,
-      worktreeBaseDir: '~/rundown/worktrees/',
+      worktreeBaseDir: '~/.rundown/worktrees/',
       sessionResume: false
     },
     serverPort: 0,

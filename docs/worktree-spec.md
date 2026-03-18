@@ -9,7 +9,7 @@ When the worktrees feature is enabled, launching a Claude Code session on a task
 ### Worktree Creation
 
 - **Trigger:** First CC launch **or shell session start** on a task that has a git repo assigned (directly or inherited) and no existing worktree. Shell sessions (ephemeral shells opened in a task's repo) follow the same worktree creation, inheritance, and health check logic as CC launches.
-- **Location:** Configurable base directory, default `~/rundown/worktrees/`. Changeable in Settings.
+- **Location:** Configurable base directory, default `~/.rundown/worktrees/`. Changeable in Settings.
 - **Naming:** `{adjective}-{noun}-{shortId}` format (e.g. `brave-falcon-a3f2`).
   - Adjective+noun from a controlled English dictionary (avoids i18n issues).
   - `shortId` is a truncated task ID for uniqueness and traceability.
@@ -97,7 +97,7 @@ When a user launches CC on a task that already has a worktree record:
 | Setting            | Type    | Default                | Description                                                                                                                                                                |
 | ------------------ | ------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Enable worktrees   | boolean | `false`                | Global toggle. When disabled, CC and shell sessions launch in the original repo directory. Existing worktrees are not deleted — they remain until their tasks are deleted. |
-| Worktree directory | path    | `~/rundown/worktrees/` | Base directory where all worktrees are created. Changing this only affects new worktrees; existing ones remain at their original path.                                     |
+| Worktree directory | path    | `~/.rundown/worktrees/` | Base directory where all worktrees are created. Changing this only affects new worktrees; existing ones remain at their original path.                                     |
 
 ## Edge Cases
 
@@ -121,7 +121,7 @@ When a user launches CC on a task that already has a worktree record:
 
 ### Creation
 
-1. **Basic creation:** Enable worktrees, launch CC on a task with a repo → worktree is created in `~/rundown/worktrees/`, branch created from default, CC opens in worktree directory.
+1. **Basic creation:** Enable worktrees, launch CC on a task with a repo → worktree is created in `~/.rundown/worktrees/`, branch created from default, CC opens in worktree directory.
 2. **Shell session creation:** Launch a shell session on a task with a repo and no worktree → worktree created, shell opens in worktree directory.
 3. **No repo assigned:** Launch CC on a task with no repo (and no inherited repo) → no worktree created, appropriate error shown.
 4. **Feature disabled:** Disable worktrees globally, launch CC → CC opens in original repo directory, no worktree created.

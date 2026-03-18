@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import {
-  ChevronRight,
+  ChevronDown,
   Plus,
   Trash2,
   Pencil,
@@ -156,42 +156,24 @@ export function TaskItem({
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div
           className={cn(
-            'group flex items-start gap-1 rounded-lg px-2 py-1.5 cursor-pointer transition-all duration-150 touch-none',
+            'group relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-pointer transition-all duration-150 touch-none',
             isSelected
               ? 'bg-accent shadow-[0_0_0_1px_var(--color-primary)/12%] text-accent-foreground'
               : 'hover:bg-muted/60',
             dropPosition === 'inside' && 'drop-nest-target bg-primary/10 rounded-md'
           )}
-          style={{ paddingLeft: `${depth * 16 + 4}px` }}
+          style={{ paddingLeft: `${depth * 21 + 10}px` }}
           onClick={() => selectTask(task.id)}
           data-testid={`task-item-${task.id}`}
           data-task-description={task.description}
           data-task-state={sessionActive ? 'in-progress' : task.state}
           {...(isEditing ? {} : { ...attributes, ...listeners })}
         >
-          {/* Expand/collapse chevron */}
-          {hasChildren ? (
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                className="shrink-0 size-5 mt-px text-muted-foreground/60"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ChevronRight
-                  className={cn('size-3 transition-transform duration-200', isOpen && 'rotate-90')}
-                />
-              </Button>
-            </CollapsibleTrigger>
-          ) : (
-            <div className="w-3 shrink-0" />
-          )}
-
           {/* Done/idle/in-progress toggle */}
           <button
             onClick={handleToggleDone}
             className={cn(
-              'shrink-0 mt-px transition-all duration-200',
+              'shrink-0 transition-all duration-200',
               isDone
                 ? 'text-success hover:text-success/70'
                 : sessionActive
@@ -243,9 +225,15 @@ export function TaskItem({
             </span>
           )}
 
-          {/* Hover action buttons */}
+          {/* Hover action buttons — overlays description, doesn't take space */}
           {!isEditing && (
-            <div className="flex items-center shrink-0 mt-px opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <div
+              className={cn(
+                'absolute flex items-center rounded-md backdrop-blur-sm shadow-sm ring-1 ring-border/20 px-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150',
+                isSelected ? 'bg-accent/95' : 'bg-background/90',
+                hasChildren ? 'right-8' : 'right-2.5'
+              )}
+            >
               <ActionButton
                 onClick={(e) => {
                   e.stopPropagation()
@@ -284,15 +272,30 @@ export function TaskItem({
               </ActionButton>
             </div>
           )}
+
+          {/* Expand/collapse chevron — right side, always visible when has children */}
+          {hasChildren && (
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="shrink-0 size-5 text-muted-foreground/60 hover:text-muted-foreground"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ChevronDown
+                  className={cn('size-3 transition-transform duration-200', !isOpen && 'rotate-90')}
+                />
+              </Button>
+            </CollapsibleTrigger>
+          )}
         </div>
 
         {/* Inline add child */}
         {isAddingChild && (
           <div
             className="flex items-center gap-1 px-2 py-1 animate-fade-in-up"
-            style={{ paddingLeft: `${(depth + 1) * 16 + 4}px` }}
+            style={{ paddingLeft: `${(depth + 1) * 21 + 10}px` }}
           >
-            <div className="w-3" />
             <Input
               data-testid="subtask-input"
               placeholder="Sub-task..."
@@ -327,15 +330,22 @@ export function TaskItem({
 
         {hasChildren && (
           <CollapsibleContent>
-            {children.map((child) => (
-              <TaskItem
-                key={child.id}
-                task={child}
-                depth={depth + 1}
-                dropIntent={dropIntent}
-                activeDragId={activeDragId}
+            <div className="relative">
+              {/* Vertical connector line — aligned with this item's toggle center */}
+              <div
+                className="absolute top-0 bottom-0 w-px bg-border/60"
+                style={{ left: `${depth * 21 + 17}px` }}
               />
-            ))}
+              {children.map((child) => (
+                <TaskItem
+                  key={child.id}
+                  task={child}
+                  depth={depth + 1}
+                  dropIntent={dropIntent}
+                  activeDragId={activeDragId}
+                />
+              ))}
+            </div>
           </CollapsibleContent>
         )}
       </Collapsible>

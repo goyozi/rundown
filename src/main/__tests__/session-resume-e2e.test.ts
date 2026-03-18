@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs'
+import { join } from 'path'
+import { tmpdir } from 'os'
 import { createSessionServer } from '../server'
 import { buildClaudeSpawnParams, type SessionResumeDeps } from '../pty'
 import type { SessionStore } from '../store'
@@ -30,8 +33,10 @@ describe('Session resume end-to-end', () => {
   let server: ReturnType<typeof createSessionServer>
   let baseUrl: string
   let store: SessionStore
+  let claudeBaseDir: string
 
   beforeEach(async () => {
+    claudeBaseDir = mkdtempSync(join(tmpdir(), 'rundown-e2e-'))
     store = createMockStore([makeTask({ id: 'task-1' })])
     server = createSessionServer(store)
     const { port } = await server.start()
@@ -40,7 +45,14 @@ describe('Session resume end-to-end', () => {
 
   afterEach(async () => {
     await server.stop()
+    rmSync(claudeBaseDir, { recursive: true, force: true })
   })
+
+  /** Create a fake Claude session on disk as a .jsonl file */
+  function createSessionOnDisk(sessionId: string): void {
+    mkdirSync(join(claudeBaseDir, 'projects', 'some-project'), { recursive: true })
+    writeFileSync(join(claudeBaseDir, 'projects', 'some-project', `${sessionId}.jsonl`), '')
+  }
 
   it('full lifecycle: spawn → report session → spawn with --resume', async () => {
     const port = parseInt(new URL(baseUrl).port, 10)
@@ -48,8 +60,17 @@ describe('Session resume end-to-end', () => {
     // Build deps that read from our mock store
     const deps: SessionResumeDeps = {
       getTaskSessionId: (taskId) => store.getTasks().find((t) => t.id === taskId)?.sessionId,
+      clearTaskSessionId: (taskId) => {
+        const tasks = store.getTasks()
+        const task = tasks.find((t) => t.id === taskId)
+        if (task) {
+          task.sessionId = undefined
+          store.setTasks(tasks)
+        }
+      },
       getServerPort: () => port,
-      isSessionResumeEnabled: () => true
+      isSessionResumeEnabled: () => true,
+      claudeBaseDir
     }
 
     // 1. First spawn: no sessionId yet → no --resume, env vars present
@@ -69,7 +90,8 @@ describe('Session resume end-to-end', () => {
     // 3. Verify sessionId stored
     expect(store.getTasks().find((t) => t.id === 'task-1')?.sessionId).toBe('sess-first')
 
-    // 4. Second spawn: sessionId exists → --resume with session ID
+    // 4. Simulate Claude writing session to disk, then second spawn uses --resume
+    createSessionOnDisk('sess-first')
     const second = buildClaudeSpawnParams('task-1', deps)
     expect(second.args).toEqual(['--resume', 'sess-first'])
     expect(second.extraEnv.RUNDOWN_TASK_ID).toBe('task-1')

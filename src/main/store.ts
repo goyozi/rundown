@@ -111,6 +111,15 @@ export function getTaskSessionId(taskId: string): string | undefined {
   return tasks.find((t) => t.id === taskId)?.sessionId
 }
 
+export function clearTaskSessionId(taskId: string): void {
+  const tasks = store.get('tasks')
+  const task = tasks.find((t) => t.id === taskId)
+  if (task) {
+    task.sessionId = undefined
+    store.set('tasks', tasks as Task[])
+  }
+}
+
 export function setSettingsValue<K extends keyof AppSettings>(key: K, value: AppSettings[K]): void {
   const settings = store.get('settings')
   settings[key] = value

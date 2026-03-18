@@ -1,7 +1,8 @@
 import { BrowserWindow, app } from 'electron'
 import * as pty from 'node-pty'
-import { readFileSync, writeFileSync } from 'fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
+import { homedir } from 'os'
 import {
   SessionIdSchema,
   CwdSchema,
@@ -94,8 +95,32 @@ export function killAllSessions(): void {
 
 export interface SessionResumeDeps {
   getTaskSessionId: (taskId: string) => string | undefined
+  clearTaskSessionId: (taskId: string) => void
   getServerPort: () => number
   isSessionResumeEnabled: () => boolean
+  claudeBaseDir?: string
+}
+
+/**
+ * Check if a Claude Code session exists on disk.
+ * Sessions are stored in <baseDir>/projects/<project-hash>/ as either
+ * a <session-id>.jsonl file, a <session-id>/ directory, or both.
+ */
+export function claudeSessionExistsOnDisk(sessionId: string, baseDir?: string): boolean {
+  const projectsDir = join(baseDir ?? join(homedir(), '.claude'), 'projects')
+  try {
+    const projects = readdirSync(projectsDir, { withFileTypes: true })
+    for (const proj of projects) {
+      if (!proj.isDirectory()) continue
+      const projDir = join(projectsDir, proj.name)
+      if (existsSync(join(projDir, `${sessionId}.jsonl`)) || existsSync(join(projDir, sessionId))) {
+        return true
+      }
+    }
+  } catch {
+    // projects dir doesn't exist or isn't readable
+  }
+  return false
 }
 
 export function buildClaudeSpawnParams(
@@ -110,7 +135,12 @@ export function buildClaudeSpawnParams(
     extraEnv.RUNDOWN_API_PORT = String(deps.getServerPort())
     const existingSessionId = deps.getTaskSessionId(taskId)
     if (existingSessionId) {
-      args.push('--resume', existingSessionId)
+      if (claudeSessionExistsOnDisk(existingSessionId, deps.claudeBaseDir)) {
+        args.push('--resume', existingSessionId)
+      } else {
+        // Session was stored but no longer exists on disk — clear the stale reference
+        deps.clearTaskSessionId(taskId)
+      }
     }
   }
 

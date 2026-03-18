@@ -12,6 +12,7 @@ import {
   setServerPort,
   getServerPort,
   getTaskSessionId,
+  clearTaskSessionId,
   getSettings,
   setSettingsValue
 } from './store'
@@ -152,6 +153,7 @@ app.whenReady().then(async () => {
   registerStoreHandlers()
   registerPtyHandlers(() => mainWindow, {
     getTaskSessionId,
+    clearTaskSessionId,
     getServerPort,
     isSessionResumeEnabled: () => getSettings().sessionResume
   })

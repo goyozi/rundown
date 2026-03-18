@@ -36,7 +36,8 @@ mac:
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: true
-  singleArchFiles: 'node_modules/node-pty/**'
+  x64ArchFiles: '**/node_modules/node-pty/prebuilds/**'
+  singleArchFiles: '**/node_modules/node-pty/prebuilds/**'
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:

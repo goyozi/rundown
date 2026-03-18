@@ -116,6 +116,7 @@ jobs:
           files: |
             dist/*.dmg
             dist/*.zip
+            dist/*.yml
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

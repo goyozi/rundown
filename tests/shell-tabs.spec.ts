@@ -110,16 +110,19 @@ test.describe('shell tabs', () => {
     await createTaskWithDir(app, page, 'Both tabs', tempDirs)
     await startSession(page)
 
-    // Open a shell tab
+    // Open a shell tab — both terminals are mounted, but only the shell one is visible
     await page.getByTestId('add-shell-tab').click()
-    await expect(page.getByTestId('terminal-panel')).toBeVisible()
+    await expect(page.getByTestId('terminal-panel').first()).not.toBeVisible()
+    await expect(page.getByTestId('terminal-panel').nth(1)).toBeVisible()
 
     // Switch back to Claude tab
     await page.getByTestId('tab-terminal').click()
-    await expect(page.getByTestId('terminal-panel')).toBeVisible()
+    await expect(page.getByTestId('terminal-panel').first()).toBeVisible()
+    await expect(page.getByTestId('terminal-panel').nth(1)).not.toBeVisible()
 
     // Switch to shell tab
     await page.getByTestId('tab-shell-1').click()
-    await expect(page.getByTestId('terminal-panel')).toBeVisible()
+    await expect(page.getByTestId('terminal-panel').first()).not.toBeVisible()
+    await expect(page.getByTestId('terminal-panel').nth(1)).toBeVisible()
   })
 })

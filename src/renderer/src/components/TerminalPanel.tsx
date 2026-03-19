@@ -52,9 +52,13 @@ const lightTheme: ITheme = {
 
 interface TerminalPanelProps {
   sessionId: string
+  visible?: boolean
 }
 
-export function TerminalPanel({ sessionId }: TerminalPanelProps): React.JSX.Element {
+export function TerminalPanel({
+  sessionId,
+  visible = true
+}: TerminalPanelProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -155,12 +159,34 @@ export function TerminalPanel({ sessionId }: TerminalPanelProps): React.JSX.Elem
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, handleResize])
 
+  // Re-fit and focus when the panel becomes visible again
+  useEffect(() => {
+    if (!visible) return
+    const term = terminalRef.current
+    const fit = fitAddonRef.current
+    if (term && fit) {
+      requestAnimationFrame(() => {
+        try {
+          fit.fit()
+          window.api.ptyResize(sessionId, term.cols, term.rows)
+          term.focus()
+        } catch {
+          // ignore
+        }
+      })
+    }
+  }, [visible, sessionId])
+
   const bg = resolved === 'dark' ? '#0f0f14' : '#f5f5f7'
 
   return (
     <div
       className="flex-1 min-h-0 overflow-hidden"
-      style={{ padding: '8px 4px 4px 8px', background: bg }}
+      style={{
+        padding: '8px 4px 4px 8px',
+        background: bg,
+        display: visible ? undefined : 'none'
+      }}
       data-testid="terminal-panel"
     >
       <div ref={containerRef} className="h-full w-full" />

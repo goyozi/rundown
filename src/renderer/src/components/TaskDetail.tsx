@@ -264,8 +264,8 @@ export function TaskDetail(): React.JSX.Element | null {
         onCloseShellTab={handleCloseShellTab}
       />
 
-      {/* Content area */}
-      {activeTab === 'review' && workingDir ? (
+      {/* Content area — terminals are always mounted (but hidden) to preserve scrollback */}
+      {activeTab === 'review' && workingDir && (
         <ReviewPanel
           directory={workingDir}
           taskId={task.id}
@@ -274,17 +274,19 @@ export function TaskDetail(): React.JSX.Element | null {
           onModeChange={setDiffMode}
           onSubmitted={() => setActiveTab('claude')}
         />
-      ) : activeTab.startsWith('shell:') ? (
-        (() => {
-          const shellId = activeTab.slice('shell:'.length)
-          const shellTab = shellTabs.find((t) => t.id === shellId)
-          return shellTab ? (
-            <TerminalPanel key={shellTab.sessionId} sessionId={shellTab.sessionId} />
-          ) : null
-        })()
-      ) : sessionActive ? (
-        <TerminalPanel sessionId={task.id} />
-      ) : (
+      )}
+
+      {sessionActive && <TerminalPanel sessionId={task.id} visible={activeTab === 'claude'} />}
+
+      {shellTabs.map((st) => (
+        <TerminalPanel
+          key={st.sessionId}
+          sessionId={st.sessionId}
+          visible={activeTab === `shell:${st.id}`}
+        />
+      ))}
+
+      {activeTab === 'claude' && !sessionActive && (
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3 animate-fade-in-up-delay-2">
             <div className="flex items-center justify-center size-12 rounded-xl bg-muted/40 border border-border/40">

@@ -170,7 +170,7 @@ export function TaskList(): React.JSX.Element {
       </div>
 
       {/* Task list */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 overflow-hidden">
         <div className="px-2 pb-2">
           {rootTasks.length === 0 ? (
             <div

@@ -57,6 +57,7 @@ const api = {
     ipcRenderer.on(IPC.PTY_DATA, handler)
     return () => ipcRenderer.removeListener(IPC.PTY_DATA, handler)
   },
+  ptySnapshot: (sessionId: string) => ipcRenderer.invoke(IPC.PTY_BUFFER_SNAPSHOT, sessionId),
   onPtyExit: (callback: (taskId: string) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, taskId: string): void => callback(taskId)
     ipcRenderer.on(IPC.PTY_EXIT, handler)

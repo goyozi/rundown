@@ -12,6 +12,7 @@ import {
 } from './validation'
 import { IPC } from '../shared/channels'
 import { safeHandle } from './ipc-utils'
+import { PtyTerminalBuffer } from './pty-buffer'
 
 // Denylist of env vars that should not leak into PTY sessions.
 // Electron-specific vars could allow escaping the sandbox, and
@@ -36,6 +37,7 @@ function buildSafeEnv(extra: Record<string, string> = {}): Record<string, string
 }
 
 const sessions = new Map<string, pty.IPty>()
+const termBuffers = new Map<string, PtyTerminalBuffer>()
 
 function getPidFilePath(): string {
   return join(app.getPath('userData'), 'pty-pids.json')
@@ -90,6 +92,10 @@ export function killAllSessions(): void {
     proc.kill()
   }
   sessions.clear()
+  for (const buf of termBuffers.values()) {
+    buf.dispose()
+  }
+  termBuffers.clear()
   persistSessionPids()
 }
 
@@ -174,9 +180,11 @@ function spawnSession(
     })
 
     sessions.set(id, ptyProcess)
+    termBuffers.set(id, new PtyTerminalBuffer(80, 24))
     persistSessionPids()
 
     ptyProcess.onData((data) => {
+      termBuffers.get(id)?.write(data)
       const win = getMainWindow()
       if (win && !win.isDestroyed()) {
         win.webContents.send(IPC.PTY_DATA, id, data)
@@ -185,6 +193,8 @@ function spawnSession(
 
     ptyProcess.onExit(() => {
       sessions.delete(id)
+      termBuffers.get(id)?.dispose()
+      termBuffers.delete(id)
       persistSessionPids()
       const win = getMainWindow()
       if (win && !win.isDestroyed()) {
@@ -252,6 +262,7 @@ export function registerPtyHandlers(
     const proc = sessions.get(id)
     if (proc) {
       proc.resize(c, r)
+      termBuffers.get(id)?.resize(c, r)
     }
   })
 
@@ -261,7 +272,14 @@ export function registerPtyHandlers(
     if (proc) {
       proc.kill()
       sessions.delete(id)
+      termBuffers.get(id)?.dispose()
+      termBuffers.delete(id)
       persistSessionPids()
     }
+  })
+
+  safeHandle(IPC.PTY_BUFFER_SNAPSHOT, (_event, taskId: unknown): string => {
+    const id = SessionIdSchema.parse(taskId)
+    return termBuffers.get(id)?.serialize() ?? ''
   })
 }

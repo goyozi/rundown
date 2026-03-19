@@ -88,6 +88,9 @@ export function TerminalPanel({
 
   useEffect(() => {
     if (!containerRef.current) return
+    let cancelled = false
+    let snapshotApplied = false
+    const pendingLiveData: string[] = []
 
     const term = new Terminal({
       cursorBlink: true,
@@ -132,11 +135,23 @@ export function TerminalPanel({
       window.api.ptyWrite(sessionId, data)
     })
 
-    // Listen for PTY data
+    // 1. Register live listener FIRST — queue until snapshot applied
     const cleanupData = window.api.onPtyData((id, data) => {
-      if (id === sessionId) {
+      if (id !== sessionId) return
+      if (snapshotApplied) {
         term.write(data)
+      } else {
+        pendingLiveData.push(data)
       }
+    })
+
+    // 2. Fetch snapshot, apply, flush queued live data
+    window.api.ptySnapshot(sessionId).then((snapshot) => {
+      if (cancelled) return
+      if (snapshot) term.write(snapshot)
+      for (const chunk of pendingLiveData) term.write(chunk)
+      pendingLiveData.length = 0
+      snapshotApplied = true
     })
 
     terminalRef.current = term
@@ -149,6 +164,7 @@ export function TerminalPanel({
     resizeObserver.observe(containerRef.current)
 
     return () => {
+      cancelled = true
       resizeObserver.disconnect()
       cleanupData()
       cleanupDataRef.current = null

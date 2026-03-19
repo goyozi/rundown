@@ -49,5 +49,6 @@ export const IPC = {
   PTY_RESIZE: 'pty:resize',
   PTY_KILL: 'pty:kill',
   PTY_DATA: 'pty:data',
-  PTY_EXIT: 'pty:exit'
+  PTY_EXIT: 'pty:exit',
+  PTY_BUFFER_SNAPSHOT: 'pty:buffer-snapshot'
 } as const

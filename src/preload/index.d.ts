@@ -52,6 +52,7 @@ interface RundownAPI {
   ptyWrite(taskId: string, data: string): Promise<void>
   ptyResize(taskId: string, cols: number, rows: number): Promise<void>
   ptyKill(taskId: string): Promise<void>
+  ptySnapshot(sessionId: string): Promise<string>
   onPtyData(callback: (taskId: string, data: string) => void): () => void
   onPtyExit(callback: (taskId: string) => void): () => void
 }

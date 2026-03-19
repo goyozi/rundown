@@ -94,9 +94,9 @@ When a user launches CC on a task that already has a worktree record:
 
 ## Settings
 
-| Setting            | Type    | Default                | Description                                                                                                                                                                |
-| ------------------ | ------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Enable worktrees   | boolean | `false`                | Global toggle. When disabled, CC and shell sessions launch in the original repo directory. Existing worktrees are not deleted — they remain until their tasks are deleted. |
+| Setting            | Type    | Default                 | Description                                                                                                                                                                |
+| ------------------ | ------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Enable worktrees   | boolean | `false`                 | Global toggle. When disabled, CC and shell sessions launch in the original repo directory. Existing worktrees are not deleted — they remain until their tasks are deleted. |
 | Worktree directory | path    | `~/.rundown/worktrees/` | Base directory where all worktrees are created. Changing this only affects new worktrees; existing ones remain at their original path.                                     |
 
 ## Edge Cases

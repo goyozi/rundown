@@ -158,6 +158,8 @@ export function ReviewPanel({
     }
 
     const feedbackText = lines.join('\n')
+    // Short delay so the terminal has time to render before input arrives
+    await new Promise((resolve) => setTimeout(resolve, 500))
     await window.api.ptyWrite(taskId, feedbackText + '\n')
 
     clearComments(taskId)

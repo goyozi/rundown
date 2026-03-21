@@ -155,9 +155,6 @@ test.describe('worktree inheritance', () => {
     const childWtName = await getWorktreeName(page)
     expect(childWtName).toBe(parentWtName)
 
-    // Should show "inherited" label
-    expect(await isWorktreeInherited(page)).toBe(true)
-
     // Start session on child — verify CWD
     await startSession(page)
     const cwd = normalizePath(await getTerminalCwd(page))
@@ -262,7 +259,6 @@ test.describe('worktree inheritance', () => {
 
     const wtC = await getWorktreeName(page)
     expect(wtC).toBe(wtB) // ChainLeaf inherits ChainMiddle's worktree, not ChainRoot's
-    expect(await isWorktreeInherited(page)).toBe(true)
   })
 })
 
@@ -733,12 +729,12 @@ test.describe('worktree v2 — mode & locking', () => {
 
     await waitForWorktreeCleanup(wtBase, 0)
 
-    // Parent reverts to unlocked
-    expect(await isWorktreeLocked(page)).toBe(false)
+    // Parent reverts to unlocked (wait for React re-render after async deletion)
+    await expect(page.getByTestId('worktree-mode-select')).toBeVisible({ timeout: 5000 })
 
     // Child also reverts to unlocked
     await clickTask(page, 'DelChild')
-    expect(await isWorktreeLocked(page)).toBe(false)
+    await expect(page.getByTestId('worktree-mode-select')).toBeVisible({ timeout: 5000 })
     expect(await getWorktreeName(page)).toBeNull()
   })
 

@@ -156,7 +156,7 @@ export function TaskItem({
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div
           className={cn(
-            'group relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-pointer transition-all duration-150 touch-none',
+            'group relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 cursor-pointer transition-all duration-150 touch-none outline-none',
             isSelected
               ? 'bg-accent shadow-[0_0_0_1px_var(--color-primary)/12%] text-accent-foreground'
               : 'hover:bg-muted/60',

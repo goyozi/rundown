@@ -4,30 +4,75 @@ import { tmpdir } from 'os'
 import path from 'path'
 import { expect } from '@playwright/test'
 import { Page } from 'playwright'
+import type { WorktreeMode } from '../../src/shared/types'
 
-/** Open Settings, toggle worktrees ON, set base dir, close dialog */
-export async function enableWorktrees(page: Page, baseDir: string): Promise<void> {
+/** Open Settings, set default worktree mode and optionally base dir, close dialog */
+export async function setDefaultWorktreeMode(
+  page: Page,
+  mode: 'own-worktree' | 'no-worktree',
+  baseDir?: string
+): Promise<void> {
   await page.getByTestId('settings-button').click()
-  const toggle = page.getByTestId('worktrees-toggle')
-  // Only click if not already checked
-  if (!(await toggle.isChecked())) {
-    await toggle.click()
+  await page.getByTestId('worktree-mode-select').click()
+  const label = mode === 'own-worktree' ? 'Own worktree' : 'No worktree'
+  await page.getByRole('option', { name: label }).click()
+  if (baseDir) {
+    const input = page.getByTestId('worktree-dir-input')
+    await input.clear()
+    await input.fill(baseDir)
   }
-  const input = page.getByTestId('worktree-dir-input')
-  await input.clear()
-  await input.fill(baseDir)
-  // Close dialog by pressing Escape
   await page.keyboard.press('Escape')
 }
 
-/** Open Settings, toggle worktrees OFF, close dialog */
-export async function disableWorktrees(page: Page): Promise<void> {
-  await page.getByTestId('settings-button').click()
-  const toggle = page.getByTestId('worktrees-toggle')
-  if (await toggle.isChecked()) {
-    await toggle.click()
+/** Select a worktree mode from the per-task dropdown (only works when unlocked) */
+export async function selectTaskWorktreeMode(page: Page, mode: WorktreeMode): Promise<void> {
+  await page.getByTestId('worktree-mode-select').click()
+  // shadcn Select renders items in a popover
+  const labels: Record<WorktreeMode, string> = {
+    inherit: 'Inherit',
+    'own-worktree': 'Own worktree',
+    'no-worktree': 'No worktree'
   }
-  await page.keyboard.press('Escape')
+  await page.getByRole('option', { name: labels[mode] }).click()
+}
+
+/** Click the "Create" button next to the worktree mode dropdown */
+export async function clickCreateWorktree(page: Page): Promise<void> {
+  await page.getByTestId('create-worktree-btn').click()
+}
+
+/** Click the "Delete worktree" button and confirm the dialog */
+export async function clickDeleteWorktree(page: Page): Promise<void> {
+  await page.getByTestId('delete-worktree-btn').click()
+  await page.getByTestId('confirm-delete-worktree').click()
+}
+
+/** Click the "×" clear-lock button and confirm the dialog */
+export async function clickClearNoWorktreeLock(page: Page): Promise<void> {
+  await page.getByTestId('clear-no-worktree-lock-btn').click()
+  await page.getByTestId('confirm-clear-lock').click()
+}
+
+/** Click the "Lock" button for the no-worktree mode */
+export async function clickLockNoWorktree(page: Page): Promise<void> {
+  await page.getByTestId('lock-no-worktree-btn').click()
+}
+
+/** Check if the mode dropdown is absent (indicating locked state) */
+export async function isWorktreeLocked(page: Page): Promise<boolean> {
+  return !(await page
+    .getByTestId('worktree-mode-select')
+    .isVisible()
+    .catch(() => false))
+}
+
+/** Read the muted resolved-mode text shown next to "Inherit" */
+export async function getResolvedModeHint(page: Page): Promise<string | null> {
+  const el = page.getByTestId('resolved-mode-hint')
+  if (await el.isVisible().catch(() => false)) {
+    return el.textContent()
+  }
+  return null
 }
 
 /** Returns text content of worktree-name element, or null if not visible */

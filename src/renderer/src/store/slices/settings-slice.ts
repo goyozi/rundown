@@ -12,7 +12,7 @@ export interface SettingsSlice {
 export const createSettingsSlice: StateCreator<FullStore, [], [], SettingsSlice> = (set, get) => ({
   settings: {
     theme: 'system',
-    worktreesEnabled: false,
+    defaultWorktreeMode: 'no-worktree' as const,
     worktreeBaseDir: '~/.rundown/worktrees/',
     sessionResume: false
   },

@@ -92,6 +92,56 @@ const migrations: Migration[] = [
         store.set('settings', { ...settings, sessionResume: false })
       }
     }
+  },
+  {
+    version: 6,
+    up: (store) => {
+      // Migrate settings: worktreesEnabled → defaultWorktreeMode
+      const settings = store.get('settings') as Record<string, unknown> | undefined
+      if (settings) {
+        const wasEnabled = settings.worktreesEnabled
+        const newSettings = { ...settings }
+        delete newSettings.worktreesEnabled
+        newSettings.defaultWorktreeMode = wasEnabled ? 'own-worktree' : 'no-worktree'
+        store.set('settings', newSettings)
+      }
+
+      // Migrate tasks: inheritWorktree → worktreeMode + worktreeLocked
+      const tasks = store.get('tasks') as unknown as Record<string, unknown>[]
+      if (tasks && tasks.length > 0) {
+        const migrated = tasks.map((t) => {
+          const task = { ...t }
+          const hadInheritFalse = task.inheritWorktree === false
+          const hasWorktree = !!task.worktree
+          const hasSessionId = !!task.sessionId
+
+          const worktreeId = hasWorktree
+            ? (task.worktree as Record<string, unknown>).worktreeId
+            : undefined
+
+          if (hadInheritFalse && hasWorktree) {
+            task.worktreeMode = 'own-worktree'
+            task.worktreeLocked = true
+            task.lockedToWorktreeId = worktreeId
+          } else if (hadInheritFalse && !hasWorktree) {
+            task.worktreeMode = 'own-worktree'
+            task.worktreeLocked = false
+          } else if (hasSessionId) {
+            task.worktreeMode = 'inherit'
+            task.worktreeLocked = true
+            // Inheriting tasks in v1 didn't track which worktree they used;
+            // lockedToWorktreeId stays undefined — health check on next resume will handle it
+          } else {
+            task.worktreeMode = 'inherit'
+            task.worktreeLocked = false
+          }
+
+          delete task.inheritWorktree
+          return task
+        })
+        store.set('tasks', migrated)
+      }
+    }
   }
 ]
 

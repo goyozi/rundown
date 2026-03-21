@@ -11,7 +11,7 @@ export const WorktreeRecordSchema = z.object({
 
 export const AppSettingsSchema = z.object({
   theme: z.enum(['light', 'dark', 'system']),
-  worktreesEnabled: z.boolean(),
+  defaultWorktreeMode: z.enum(['own-worktree', 'no-worktree']),
   worktreeBaseDir: z.string(),
   sessionResume: z.boolean()
 })
@@ -25,7 +25,9 @@ export const TaskSchema = z.object({
   children: z.array(z.string()),
   createdAt: z.string(),
   groupId: z.string(),
-  inheritWorktree: z.boolean().optional(),
+  worktreeMode: z.enum(['inherit', 'own-worktree', 'no-worktree']).optional(),
+  worktreeLocked: z.boolean().optional(),
+  lockedToWorktreeId: z.string().optional(),
   worktree: WorktreeRecordSchema.optional(),
   sessionId: z.string().optional()
 })

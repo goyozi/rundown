@@ -1,8 +1,13 @@
 import type { StateCreator } from 'zustand'
-import type { Task, WorktreeRecord } from '../../../../shared/types'
+import type { Task, WorktreeRecord, WorktreeMode } from '../../../../shared/types'
 import type { FullStore } from '../task-store'
 import { useCommentStore } from '../comment-store'
-import { collectTaskIds, normalizeDirPath } from '../../lib/task-utils'
+import {
+  collectTaskIds,
+  normalizeDirPath,
+  walkWorktreeAncestors,
+  classifyWorktreeMode
+} from '../../lib/task-utils'
 
 export interface TaskSlice {
   tasks: Task[]
@@ -26,10 +31,15 @@ export interface TaskSlice {
   isDescendant: (ancestorId: string, descendantId: string) => boolean
   getMaxSubtreeDepth: (id: string) => number
   getEffectiveWorktree: (id: string) => WorktreeRecord | undefined
-  getWorktreeOwnerTaskId: (id: string) => string | undefined
   setWorktreeOnTask: (id: string, worktree: WorktreeRecord) => void
-  setInheritWorktree: (id: string, inherit: boolean) => void
   clearWorktreeOnTask: (id: string) => void
+  setWorktreeMode: (id: string, mode: WorktreeMode) => void
+  lockTask: (id: string, worktreeId?: string) => void
+  createAndLockWorktree: (id: string, worktree: WorktreeRecord) => void
+  resolveEffectiveMode: (id: string) => 'own-worktree' | 'no-worktree'
+  getInheritedWorktree: (id: string) => WorktreeRecord | undefined
+  deleteWorktreeOnTask: (id: string) => Promise<void>
+  clearNoWorktreeLock: (id: string) => void
 }
 
 export const createTaskSlice: StateCreator<FullStore, [], [], TaskSlice> = (set, get) => ({
@@ -317,44 +327,22 @@ export const createTaskSlice: StateCreator<FullStore, [], [], TaskSlice> = (set,
   },
 
   getEffectiveWorktree: (id) => {
-    if (!get().settings.worktreesEnabled) return undefined
     const { tasks } = get()
     const startDir = normalizeDirPath(get().getEffectiveDirectory(id))
-    let current = tasks.find((t) => t.id === id)
-    while (current) {
-      if (current.worktree) {
-        // Only inherit if the worktree belongs to the same repo
-        return normalizeDirPath(current.worktree.repoPath) === startDir
-          ? current.worktree
-          : undefined
+    return walkWorktreeAncestors<WorktreeRecord | undefined>(id, tasks, (task, isFirst) => {
+      const { mode, isConcrete, isTransparent } = classifyWorktreeMode(task, isFirst)
+      if (isTransparent) return { decision: 'transparent' }
+      if (mode === 'own-worktree') {
+        if (isConcrete) {
+          const sameRepo = normalizeDirPath(task.worktree!.repoPath) === startDir
+          return { decision: 'stop', result: sameRepo ? task.worktree : undefined }
+        }
+        // Intent only on the start task itself: nothing to use yet.
+        return { decision: 'stop', result: undefined }
       }
-      // If this task explicitly opts out of inheritance and has no worktree, stop
-      if (current.inheritWorktree === false) return undefined
-      if (!current.parentId) return undefined
-      current = tasks.find((t) => t.id === current!.parentId)
-    }
-    return undefined
-  },
-
-  getWorktreeOwnerTaskId: (id) => {
-    if (!get().settings.worktreesEnabled) return undefined
-    const { tasks } = get()
-    const startDir = normalizeDirPath(get().getEffectiveDirectory(id))
-    let current = tasks.find((t) => t.id === id)
-    while (current) {
-      // If this task already owns a worktree for the same repo, it's the owner
-      if (current.worktree) {
-        return normalizeDirPath(current.worktree.repoPath) === startDir ? current.id : undefined
-      }
-      // If this task opts out of inheritance, it should own its own worktree
-      if (current.inheritWorktree === false) return current.id
-      if (!current.parentId) return current.id
-      // Walk up, but only if we're still inheriting
-      const parent = tasks.find((t) => t.id === current!.parentId)
-      if (!parent) return current.id
-      current = parent
-    }
-    return undefined
+      if (mode === 'no-worktree') return { decision: 'stop', result: undefined }
+      return { decision: 'inherit' }
+    })
   },
 
   setWorktreeOnTask: (id, worktree) => {
@@ -364,16 +352,147 @@ export const createTaskSlice: StateCreator<FullStore, [], [], TaskSlice> = (set,
     get().persist()
   },
 
-  setInheritWorktree: (id, inherit) => {
+  clearWorktreeOnTask: (id) => {
     set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === id ? { ...t, inheritWorktree: inherit } : t))
+      tasks: state.tasks.map((t) => (t.id === id ? { ...t, worktree: undefined } : t))
     }))
     get().persist()
   },
 
-  clearWorktreeOnTask: (id) => {
+  setWorktreeMode: (id, mode) => {
+    const task = get().getTask(id)
+    if (!task || task.worktreeLocked) return
     set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === id ? { ...t, worktree: undefined } : t))
+      tasks: state.tasks.map((t) => (t.id === id ? { ...t, worktreeMode: mode } : t))
+    }))
+    get().persist()
+  },
+
+  lockTask: (id, worktreeId) => {
+    const task = get().getTask(id)
+    if (task?.worktreeLocked) return
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === id ? { ...t, worktreeLocked: true, lockedToWorktreeId: worktreeId } : t
+      )
+    }))
+    get().persist()
+  },
+
+  createAndLockWorktree: (id, worktree) => {
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              worktree,
+              worktreeMode: 'own-worktree' as const,
+              worktreeLocked: true,
+              lockedToWorktreeId: worktree.worktreeId
+            }
+          : t
+      )
+    }))
+    get().persist()
+  },
+
+  resolveEffectiveMode: (id) => {
+    const { tasks, settings } = get()
+    return (
+      walkWorktreeAncestors<'own-worktree' | 'no-worktree'>(id, tasks, (task, isFirst) => {
+        const { mode, isTransparent } = classifyWorktreeMode(task, isFirst)
+        if (isTransparent) return { decision: 'transparent' }
+        if (mode === 'own-worktree') return { decision: 'stop', result: 'own-worktree' }
+        if (mode === 'no-worktree') return { decision: 'stop', result: 'no-worktree' }
+        return { decision: 'inherit' }
+      }) ?? settings.defaultWorktreeMode
+    )
+  },
+
+  getInheritedWorktree: (id) => {
+    const { tasks } = get()
+    const startDir = normalizeDirPath(get().getEffectiveDirectory(id))
+    const task = tasks.find((t) => t.id === id)
+    if (!task?.parentId) return undefined
+    // Start from parent — we want only worktrees inherited from ancestors
+    return walkWorktreeAncestors<WorktreeRecord | undefined>(task.parentId, tasks, (ancestor) => {
+      const { mode, isConcrete, isTransparent } = classifyWorktreeMode(ancestor, false)
+      if (isTransparent) return { decision: 'transparent' }
+      if (mode === 'own-worktree') {
+        if (isConcrete) {
+          const sameRepo = normalizeDirPath(ancestor.worktree!.repoPath) === startDir
+          return { decision: 'stop', result: sameRepo ? ancestor.worktree : undefined }
+        }
+        return { decision: 'transparent' }
+      }
+      if (mode === 'no-worktree') return { decision: 'stop', result: undefined }
+      return { decision: 'inherit' }
+    })
+  },
+
+  deleteWorktreeOnTask: async (id) => {
+    const task = get().getTask(id)
+    if (!task?.worktree) return
+    if (get().activeSessions.has(id)) return
+
+    const deletedWorktreeId = task.worktree.worktreeId
+
+    // Clean up worktree on disk
+    try {
+      await window.api.worktreeCleanup(task.worktree)
+    } catch (err) {
+      window.api.logError(
+        `Failed to clean up worktree for task ${id}`,
+        err instanceof Error ? err.stack : String(err)
+      )
+    }
+
+    // Reset the owning task and any descendants locked to the deleted worktree
+    const allDescendantIds = new Set(collectTaskIds(id, get().getTask))
+    allDescendantIds.delete(id)
+    set((state) => ({
+      tasks: state.tasks.map((t) => {
+        if (t.id === id) {
+          return {
+            ...t,
+            worktree: undefined,
+            worktreeLocked: false,
+            lockedToWorktreeId: undefined,
+            worktreeMode: 'inherit' as const,
+            sessionId: undefined
+          }
+        }
+        if (allDescendantIds.has(t.id) && t.lockedToWorktreeId === deletedWorktreeId) {
+          return {
+            ...t,
+            worktreeLocked: false,
+            lockedToWorktreeId: undefined,
+            worktreeMode: 'inherit' as const,
+            sessionId: undefined
+          }
+        }
+        return t
+      })
+    }))
+
+    get().persist()
+  },
+
+  clearNoWorktreeLock: (id) => {
+    const task = get().getTask(id)
+    if (!task || !task.worktreeLocked || task.worktree) return
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              worktreeLocked: false,
+              lockedToWorktreeId: undefined,
+              worktreeMode: 'inherit' as const,
+              sessionId: undefined
+            }
+          : t
+      )
     }))
     get().persist()
   }

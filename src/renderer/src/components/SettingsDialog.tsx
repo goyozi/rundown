@@ -3,6 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { useTheme } from '@/hooks/use-theme'
 import { useTaskStore } from '@/store/task-store'
 import { useShallow } from 'zustand/react/shallow'
@@ -74,44 +81,44 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps): Rea
             </div>
           </div>
 
-          {/* Worktree toggle */}
+          {/* Default worktree mode */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <label htmlFor="worktrees-toggle" className="text-sm font-medium">
-                  Automatic worktrees
-                </label>
+                <span className="text-sm font-medium">Default worktree mode</span>
                 <p className="text-xs text-muted-foreground">
-                  Create isolated git worktrees per task for parallel work
+                  How tasks behave when set to &quot;Inherit&quot;
                 </p>
               </div>
-              <Switch
-                id="worktrees-toggle"
-                checked={settings.worktreesEnabled}
-                onCheckedChange={(checked) => {
-                  if (checked && !isValidWorktreeDir(settings.worktreeBaseDir)) return
-                  updateSettings({ worktreesEnabled: checked })
-                }}
-                data-testid="worktrees-toggle"
-              />
+              <Select
+                value={settings.defaultWorktreeMode}
+                onValueChange={(v) =>
+                  updateSettings({ defaultWorktreeMode: v as 'own-worktree' | 'no-worktree' })
+                }
+              >
+                <SelectTrigger className="h-8 w-[140px] text-xs" data-testid="worktree-mode-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="own-worktree" className="text-xs">
+                    Own worktree
+                  </SelectItem>
+                  <SelectItem value="no-worktree" className="text-xs">
+                    No worktree
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Worktree directory */}
-            <div
-              className={`space-y-1.5 ${!settings.worktreesEnabled ? 'opacity-50 pointer-events-none' : ''}`}
-            >
+            <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Worktree directory</label>
               <div className="flex items-center gap-2">
                 <Input
                   value={settings.worktreeBaseDir}
                   onChange={(e) => {
                     const next = e.target.value
-                    if (isValidWorktreeDir(next)) {
-                      updateSettings({ worktreeBaseDir: next })
-                    } else {
-                      // Still update the input value for UX, but disable worktrees
-                      updateSettings({ worktreeBaseDir: next, worktreesEnabled: false })
-                    }
+                    updateSettings({ worktreeBaseDir: next })
                   }}
                   className={`h-8 text-xs font-mono ${
                     !isValidWorktreeDir(settings.worktreeBaseDir) ? 'border-destructive' : ''

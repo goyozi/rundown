@@ -20,7 +20,7 @@ import { ReviewPanel } from './ReviewPanel'
 import { TaskHeader } from './TaskHeader'
 import { TabBar } from './TabBar'
 import type { ShellTab } from '@/store/slices/shell-tab-slice'
-import type { DiffMode } from '../../../shared/types'
+import type { DiffMode, WorktreeMode } from '../../../shared/types'
 
 // Module-level counter so shell IDs never collide across remounts
 let shellIdCounter = 0
@@ -40,8 +40,12 @@ export function TaskDetail(): React.JSX.Element | null {
     addShellTab,
     removeShellTab,
     effectiveWorktree,
-    worktreeOwnerTaskId,
-    settings
+    resolvedMode,
+    inheritedWorktree,
+    setWorktreeMode,
+    lockTask,
+    deleteWorktreeOnTask,
+    clearNoWorktreeLock
   } = useTaskStore(
     useShallow((s) => ({
       selectedTaskId: s.selectedTaskId,
@@ -57,23 +61,22 @@ export function TaskDetail(): React.JSX.Element | null {
       addShellTab: s.addShellTab,
       removeShellTab: s.removeShellTab,
       effectiveWorktree: s.selectedTaskId ? s.getEffectiveWorktree(s.selectedTaskId) : undefined,
-      worktreeOwnerTaskId: s.selectedTaskId
-        ? s.getWorktreeOwnerTaskId(s.selectedTaskId)
-        : undefined,
-      settings: s.settings
+      resolvedMode: s.selectedTaskId ? s.resolveEffectiveMode(s.selectedTaskId) : undefined,
+      inheritedWorktree: s.selectedTaskId ? s.getInheritedWorktree(s.selectedTaskId) : undefined,
+      setWorktreeMode: s.setWorktreeMode,
+      lockTask: s.lockTask,
+      deleteWorktreeOnTask: s.deleteWorktreeOnTask,
+      clearNoWorktreeLock: s.clearNoWorktreeLock
     }))
   )
   const { resolved } = useTheme()
-  const {
-    resolveSessionCwd,
-    toggleOwnWorktree,
-    isTogglingWorktree,
-    worktreeWarning,
-    clearWorktreeWarning
-  } = useWorktreeSession()
+  const { resolveSessionCwd, createWorktreeNow, worktreeWarning, clearWorktreeWarning } =
+    useWorktreeSession()
   const [isStarting, setIsStarting] = useState(false)
   const [spawnError, setSpawnError] = useState<string | null>(null)
   const [modePerTask, setModePerTask] = useState<Record<string, DiffMode>>({})
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [clearLockConfirmOpen, setClearLockConfirmOpen] = useState(false)
 
   const activeTab = (selectedTaskId && tabPerTask[selectedTaskId]) || 'claude'
   const shellTabs = (selectedTaskId && shellTabsPerTask[selectedTaskId]) || []
@@ -113,10 +116,43 @@ export function TaskDetail(): React.JSX.Element | null {
     }
   })
 
-  const handleToggleOwnWorktree = useCallback(async (): Promise<void> => {
+  const handleModeChange = useCallback(
+    (mode: WorktreeMode): void => {
+      const currentTaskId = taskIdRef.current
+      if (currentTaskId) setWorktreeMode(currentTaskId, mode)
+    },
+    [setWorktreeMode]
+  )
+
+  const handleCreateWorktree = useCallback(async (): Promise<void> => {
     const currentTaskId = taskIdRef.current
-    if (currentTaskId) await toggleOwnWorktree(currentTaskId)
-  }, [toggleOwnWorktree])
+    if (currentTaskId) await createWorktreeNow(currentTaskId)
+  }, [createWorktreeNow])
+
+  const handleDeleteWorktree = useCallback((): void => {
+    setDeleteConfirmOpen(true)
+  }, [])
+
+  const handleConfirmDelete = useCallback(async (): Promise<void> => {
+    const currentTaskId = taskIdRef.current
+    setDeleteConfirmOpen(false)
+    if (currentTaskId) await deleteWorktreeOnTask(currentTaskId)
+  }, [deleteWorktreeOnTask])
+
+  const handleClearNoWorktreeLock = useCallback((): void => {
+    setClearLockConfirmOpen(true)
+  }, [])
+
+  const handleLockNoWorktree = useCallback((): void => {
+    const currentTaskId = taskIdRef.current
+    if (currentTaskId) lockTask(currentTaskId)
+  }, [lockTask])
+
+  const handleConfirmClearLock = useCallback((): void => {
+    const currentTaskId = taskIdRef.current
+    setClearLockConfirmOpen(false)
+    if (currentTaskId) clearNoWorktreeLock(currentTaskId)
+  }, [clearNoWorktreeLock])
 
   const handleStartSession = useCallback(async (): Promise<void> => {
     const currentTaskId = taskIdRef.current
@@ -229,8 +265,12 @@ export function TaskDetail(): React.JSX.Element | null {
   const isInherited = !task.directory && !!effectiveDir
   const sessionActive = activeSessions.has(task.id)
   // Single source of truth for the worktree-aware working directory
-  const workingDir =
-    settings.worktreesEnabled && effectiveWorktree ? effectiveWorktree.path : effectiveDir
+  const workingDir = effectiveWorktree ? effectiveWorktree.path : effectiveDir
+
+  // Determine if this task owns its effective worktree
+  const isWorktreeOwner = effectiveWorktree
+    ? !!task.worktree && task.worktree.worktreeId === effectiveWorktree.worktreeId
+    : false
 
   return (
     <div className="flex flex-col h-full" data-testid="task-detail">
@@ -244,12 +284,17 @@ export function TaskDetail(): React.JSX.Element | null {
         onPickDirectory={handlePickDirectory}
         onStartSession={handleStartSession}
         onStopSession={handleStopSession}
-        worktreeName={effectiveWorktree?.name}
-        isWorktreeInherited={effectiveWorktree ? worktreeOwnerTaskId !== selectedTaskId : undefined}
-        worktreesEnabled={settings.worktreesEnabled}
-        onToggleOwnWorktree={task.parentId ? handleToggleOwnWorktree : undefined}
-        hasOwnWorktree={task.inheritWorktree === false}
-        isTogglingWorktree={isTogglingWorktree}
+        worktreeMode={task.worktreeMode}
+        resolvedMode={resolvedMode}
+        isLocked={task.worktreeLocked}
+        effectiveWorktreeName={effectiveWorktree?.name}
+        isWorktreeOwner={isWorktreeOwner}
+        inheritedWorktreeName={inheritedWorktree?.name}
+        onModeChange={handleModeChange}
+        onCreateWorktree={handleCreateWorktree}
+        onDeleteWorktree={handleDeleteWorktree}
+        onClearNoWorktreeLock={handleClearNoWorktreeLock}
+        onLockNoWorktree={handleLockNoWorktree}
       />
 
       <Separator />
@@ -348,6 +393,62 @@ export function TaskDetail(): React.JSX.Element | null {
           </DialogHeader>
           <DialogFooter>
             <Button onClick={clearWorktreeWarning}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear no-worktree lock confirmation dialog */}
+      <Dialog open={clearLockConfirmOpen} onOpenChange={setClearLockConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-warning" />
+              Clear worktree lock
+            </DialogTitle>
+            <DialogDescription>
+              Changes made in the repository directory will not be reverted. The current Claude Code
+              session will not be resumed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClearLockConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmClearLock}
+              data-testid="confirm-clear-lock"
+            >
+              Clear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete worktree confirmation dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-warning" />
+              Delete worktree
+            </DialogTitle>
+            <DialogDescription>
+              This will remove the worktree directory and its branch from disk. Any inheriting child
+              tasks will be reset. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              data-testid="confirm-delete-worktree"
+            >
+              Delete
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

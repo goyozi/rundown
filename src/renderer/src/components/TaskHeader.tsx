@@ -1,10 +1,28 @@
 import React from 'react'
-import { FolderOpen, CheckCircle2, Play, Square, Loader2, GitBranch, GitFork } from 'lucide-react'
+import {
+  FolderOpen,
+  CheckCircle2,
+  Play,
+  Square,
+  Loader2,
+  GitBranch,
+  GitFork,
+  Trash2,
+  X
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import type { Task } from '@/store/task-store'
+import type { WorktreeMode } from '../../../shared/types'
 
 interface TaskHeaderProps {
   task: Task
@@ -16,12 +34,17 @@ interface TaskHeaderProps {
   onPickDirectory: () => void
   onStartSession: () => void
   onStopSession: () => void
-  worktreeName?: string
-  isWorktreeInherited?: boolean
-  worktreesEnabled?: boolean
-  onToggleOwnWorktree?: () => void
-  hasOwnWorktree?: boolean
-  isTogglingWorktree?: boolean
+  worktreeMode?: WorktreeMode
+  resolvedMode?: 'own-worktree' | 'no-worktree'
+  isLocked?: boolean
+  effectiveWorktreeName?: string
+  isWorktreeOwner?: boolean
+  inheritedWorktreeName?: string
+  onModeChange?: (mode: WorktreeMode) => void
+  onCreateWorktree?: () => void
+  onDeleteWorktree?: () => void
+  onClearNoWorktreeLock?: () => void
+  onLockNoWorktree?: () => void
 }
 
 export function TaskHeader({
@@ -34,12 +57,17 @@ export function TaskHeader({
   onPickDirectory,
   onStartSession,
   onStopSession,
-  worktreeName,
-  isWorktreeInherited,
-  worktreesEnabled,
-  onToggleOwnWorktree,
-  hasOwnWorktree,
-  isTogglingWorktree
+  worktreeMode,
+  resolvedMode,
+  isLocked,
+  effectiveWorktreeName,
+  isWorktreeOwner,
+  inheritedWorktreeName,
+  onModeChange,
+  onCreateWorktree,
+  onDeleteWorktree,
+  onClearNoWorktreeLock,
+  onLockNoWorktree
 }: TaskHeaderProps): React.ReactElement {
   const isInProgress = sessionActive
 
@@ -67,6 +95,15 @@ export function TaskHeader({
       Idle
     </Badge>
   )
+
+  const hasRepo = !!effectiveDir
+  const currentMode = worktreeMode ?? 'inherit'
+
+  // Determine worktree display state
+  const showModeSelector = hasRepo && !isLocked
+  const showLockedOwner = isLocked && isWorktreeOwner && effectiveWorktreeName
+  const showLockedInherited = isLocked && !isWorktreeOwner && effectiveWorktreeName
+  const showLockedNoWorktree = isLocked && !effectiveWorktreeName && resolvedMode === 'no-worktree'
 
   return (
     <div className="px-6 pt-5 pb-4 drag-region">
@@ -117,23 +154,140 @@ export function TaskHeader({
               )}
             </div>
 
-            {/* Worktree display */}
-            {worktreeName && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-fade-in-up-delay mt-1">
+            {/* Worktree mode selector (unlocked + has repo) */}
+            {showModeSelector && onModeChange && (
+              <div className="flex items-center gap-1.5 mt-1.5 animate-fade-in-up-delay">
+                <GitFork className="size-3.5 shrink-0 text-muted-foreground/50" />
+                <Select value={currentMode} onValueChange={(v) => onModeChange(v as WorktreeMode)}>
+                  <SelectTrigger
+                    className="!h-auto !min-h-0 !border-none !shadow-none !bg-muted/50 hover:!bg-muted !px-1.5 !py-0.5 !rounded !gap-0.5 !text-[11px] text-muted-foreground hover:text-foreground transition-colors font-mono [&_svg]:!size-3 [&_svg]:text-muted-foreground/50"
+                    data-testid="worktree-mode-select"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="inherit" className="text-xs">
+                      Inherit
+                    </SelectItem>
+                    <SelectItem value="own-worktree" className="text-xs">
+                      Own worktree
+                    </SelectItem>
+                    <SelectItem value="no-worktree" className="text-xs">
+                      No worktree
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {currentMode === 'inherit' && inheritedWorktreeName && (
+                  <code
+                    className="font-mono text-[11px] bg-primary/5 text-primary/80 px-1.5 py-0.5 rounded"
+                    data-testid="worktree-name"
+                  >
+                    {inheritedWorktreeName}
+                  </code>
+                )}
+                {currentMode === 'inherit' && !inheritedWorktreeName && resolvedMode && (
+                  <span
+                    className="text-[11px] text-muted-foreground/40 italic"
+                    data-testid="resolved-mode-hint"
+                  >
+                    {resolvedMode === 'own-worktree' ? 'own worktree' : 'no worktree'}
+                  </span>
+                )}
+                {currentMode === 'own-worktree' && !effectiveWorktreeName && onCreateWorktree && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-5 text-[11px] px-1.5 rounded"
+                    onClick={onCreateWorktree}
+                    data-testid="create-worktree-btn"
+                  >
+                    Create
+                  </Button>
+                )}
+                {currentMode === 'no-worktree' && onLockNoWorktree && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-5 text-[11px] px-1.5 rounded"
+                    onClick={onLockNoWorktree}
+                    data-testid="lock-no-worktree-btn"
+                  >
+                    Lock
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Locked: owns worktree */}
+            {showLockedOwner && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-fade-in-up-delay mt-1.5">
                 <GitBranch className="size-3.5 shrink-0 text-primary/50" />
                 <code
                   className="font-mono text-[11px] bg-primary/5 text-primary/80 px-1.5 py-0.5 rounded"
                   data-testid="worktree-name"
                 >
-                  {worktreeName}
+                  {effectiveWorktreeName}
                 </code>
-                {isWorktreeInherited && (
-                  <span
-                    className="italic text-muted-foreground/40 text-[11px]"
-                    data-testid="worktree-inherited"
-                  >
-                    inherited
-                  </span>
+                {onDeleteWorktree && !sessionActive && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-5 text-muted-foreground/50 hover:text-destructive"
+                        onClick={onDeleteWorktree}
+                        data-testid="delete-worktree-btn"
+                      >
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete worktree</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            )}
+
+            {/* Locked: inherits worktree */}
+            {showLockedInherited && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-fade-in-up-delay mt-1.5">
+                <GitBranch className="size-3.5 shrink-0 text-primary/50" />
+                <code
+                  className="font-mono text-[11px] bg-primary/5 text-primary/80 px-1.5 py-0.5 rounded"
+                  data-testid="worktree-name"
+                >
+                  {effectiveWorktreeName}
+                </code>
+                <span
+                  className="italic text-muted-foreground/40 text-[11px]"
+                  data-testid="worktree-inherited"
+                >
+                  inherited
+                </span>
+              </div>
+            )}
+
+            {/* Locked: no worktree */}
+            {showLockedNoWorktree && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-fade-in-up-delay mt-1.5">
+                <FolderOpen className="size-3.5 shrink-0 text-muted-foreground/50" />
+                <span className="font-mono text-[11px] bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded">
+                  No worktree
+                </span>
+                {onClearNoWorktreeLock && !sessionActive && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-5 text-muted-foreground/50 hover:text-destructive"
+                        onClick={onClearNoWorktreeLock}
+                        data-testid="clear-no-worktree-lock-btn"
+                      >
+                        <X className="size-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Clear lock</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             )}
@@ -141,30 +295,6 @@ export function TaskHeader({
 
           {/* Session controls */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {worktreesEnabled && task.parentId && onToggleOwnWorktree && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      'size-8',
-                      hasOwnWorktree
-                        ? 'text-primary hover:text-primary/80'
-                        : 'text-muted-foreground/50 hover:text-muted-foreground'
-                    )}
-                    onClick={onToggleOwnWorktree}
-                    disabled={isTogglingWorktree}
-                    data-testid="toggle-own-worktree"
-                  >
-                    <GitFork className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {hasOwnWorktree ? 'Inherit parent worktree' : 'Use own worktree'}
-                </TooltipContent>
-              </Tooltip>
-            )}
             {sessionActive ? (
               <Tooltip>
                 <TooltipTrigger asChild>

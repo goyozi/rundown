@@ -7,9 +7,11 @@ export interface WorktreeRecord {
   createdAt: string
 }
 
+export type WorktreeMode = 'inherit' | 'own-worktree' | 'no-worktree'
+
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system'
-  worktreesEnabled: boolean
+  defaultWorktreeMode: 'own-worktree' | 'no-worktree'
   worktreeBaseDir: string // default "~/.rundown/worktrees/"
   sessionResume: boolean
 }
@@ -23,7 +25,9 @@ export interface Task {
   children: string[]
   createdAt: string
   groupId: string
-  inheritWorktree?: boolean // default true when absent
+  worktreeMode?: WorktreeMode // default 'inherit' when absent
+  worktreeLocked?: boolean // default false when absent
+  lockedToWorktreeId?: string // worktreeId this task is locked to (own or inherited)
   worktree?: WorktreeRecord // only on tasks that OWN a worktree
   sessionId?: string
 }

@@ -57,12 +57,12 @@ const storeOptions: ConstructorParameters<typeof Store<StoreSchema>>[0] = {
     comments: {},
     settings: {
       theme: 'system',
-      worktreesEnabled: false,
+      defaultWorktreeMode: 'no-worktree' as const,
       worktreeBaseDir: '~/.rundown/worktrees/',
       sessionResume: false
     },
     serverPort: 0,
-    schemaVersion: 5
+    schemaVersion: 6
   }
 }
 

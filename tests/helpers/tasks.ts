@@ -25,19 +25,21 @@ export async function editTaskDescription(
   oldDescription: string,
   newDescription: string
 ): Promise<void> {
-  await hoverTask(page, oldDescription)
+  await page.keyboard.press('Escape')
   const item = page.locator(`[data-task-description="${oldDescription}"]`)
-  await item.getByTestId('edit-task').click()
+  await item.click({ button: 'right' })
+  await page.getByTestId('edit-task').click()
   const editInput = item.locator('input')
   await editInput.fill(newDescription)
   await editInput.press('Enter')
-  await page.getByText(newDescription).waitFor()
+  await page.locator(`[data-task-description="${newDescription}"]`).waitFor()
 }
 
 export async function deleteTask(page: Page, description: string): Promise<void> {
-  await hoverTask(page, description)
+  await page.keyboard.press('Escape')
   const item = page.locator(`[data-task-description="${description}"]`)
-  await item.getByTestId('delete-task').click()
+  await item.click({ button: 'right' })
+  await page.getByTestId('delete-task').click()
   const confirmBtn = page.getByTestId('confirm-delete')
   if (await confirmBtn.isVisible({ timeout: 500 }).catch(() => false)) {
     await confirmBtn.click()
@@ -49,9 +51,15 @@ export async function addSubtask(
   parentDescription: string,
   childDescription: string
 ): Promise<void> {
-  await hoverTask(page, parentDescription)
+  // Dismiss any lingering context menu and wait for it to unmount
+  await page.keyboard.press('Escape')
+  await page
+    .locator('[data-slot="context-menu-content"]')
+    .waitFor({ state: 'hidden', timeout: 1000 })
+    .catch(() => {})
   const item = page.locator(`[data-task-description="${parentDescription}"]`)
-  await item.getByTestId('add-subtask').click()
+  await item.click({ button: 'right' })
+  await page.getByTestId('add-subtask').click()
   const subtaskInput = page.getByTestId('subtask-input')
   await subtaskInput.fill(childDescription)
   await subtaskInput.press('Enter')

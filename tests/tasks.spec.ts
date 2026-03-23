@@ -68,10 +68,8 @@ test.describe('subtasks', () => {
       await expect(page.locator(`[data-task-description="${level}"]`)).toBeVisible()
     }
 
-    await page.locator('[data-task-description="Level 4"]').hover()
-    await expect(
-      page.locator('[data-task-description="Level 4"]').getByTestId('add-subtask')
-    ).not.toBeVisible()
+    await page.locator('[data-task-description="Level 4"]').click({ button: 'right' })
+    await expect(page.getByTestId('add-subtask')).not.toBeVisible()
   })
 })
 

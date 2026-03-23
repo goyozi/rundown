@@ -204,6 +204,7 @@ export function TerminalPanel({
         display: visible ? undefined : 'none'
       }}
       data-testid="terminal-panel"
+      data-session-id={sessionId}
     >
       <div ref={containerRef} className="h-full w-full" />
     </div>

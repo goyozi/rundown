@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { usePaneKeyboardNav } from '@/hooks/use-pane-keyboard-nav'
 import { AlertCircle } from 'lucide-react'
 import { TaskList } from './components/TaskList'
 import { TaskDetail } from './components/TaskDetail'
@@ -22,6 +23,7 @@ function App(): React.JSX.Element {
       cleanupExitedShell: s.cleanupExitedShell
     }))
   )
+  usePaneKeyboardNav()
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR)
   const isDragging = useRef(false)
 

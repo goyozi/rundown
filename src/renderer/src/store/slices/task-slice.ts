@@ -14,6 +14,16 @@ export interface TaskSlice {
   selectedTaskId: string | null
   loaded: boolean
 
+  // Transient UI state
+  editingTaskId: string | null
+  addingSubtaskForTaskId: string | null
+  collapsedTaskIds: Set<string>
+  startEditing: (id: string) => void
+  stopEditing: () => void
+  startAddingSubtask: (id: string) => void
+  stopAddingSubtask: () => void
+  toggleCollapsed: (id: string) => void
+
   addTask: (description: string, parentId?: string) => void
   updateDescription: (id: string, description: string) => void
   updateDirectory: (id: string, directory: string | undefined) => void
@@ -46,6 +56,29 @@ export const createTaskSlice: StateCreator<FullStore, [], [], TaskSlice> = (set,
   tasks: [],
   selectedTaskId: null,
   loaded: false,
+
+  editingTaskId: null,
+  addingSubtaskForTaskId: null,
+  collapsedTaskIds: new Set(),
+  startEditing: (id) => {
+    const task = get().getTask(id)
+    if (!task) return
+    set({ editingTaskId: id })
+  },
+  stopEditing: () => set({ editingTaskId: null }),
+  startAddingSubtask: (id) => {
+    const task = get().getTask(id)
+    if (!task || get().getDepth(id) >= 4) return
+    set({ addingSubtaskForTaskId: id })
+  },
+  stopAddingSubtask: () => set({ addingSubtaskForTaskId: null }),
+  toggleCollapsed: (id) =>
+    set((state) => {
+      const next = new Set(state.collapsedTaskIds)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return { collapsedTaskIds: next }
+    }),
 
   addTask: (description, parentId) => {
     const id = crypto.randomUUID()

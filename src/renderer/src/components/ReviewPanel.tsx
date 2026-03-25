@@ -241,6 +241,7 @@ export function ReviewPanel({
                     taskId={taskId}
                     commentId={comment.id}
                     body={comment.body}
+                    autoFocus
                   />
                 )
               }

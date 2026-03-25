@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   ChevronDown,
   Plus,
@@ -83,9 +83,18 @@ export function TaskItem({
 
   const editInputRef = React.useRef<HTMLInputElement>(null)
   const [childDescription, setChildDescription] = useState('')
+  const subtaskInputRef = useRef<HTMLInputElement>(null)
   const isOpen = !collapsedTaskIds.has(task.id)
   const isEditing = editingTaskId === task.id
   const isAddingChild = addingSubtaskForTaskId === task.id
+
+  useEffect(() => {
+    if (!isAddingChild) return
+    // Delay focus so it fires after the context menu restores focus to its trigger
+    const timer = requestAnimationFrame(() => subtaskInputRef.current?.focus())
+    return () => cancelAnimationFrame(timer)
+  }, [isAddingChild])
+
   const children = getChildren(task.id)
   const hasChildren = children.length > 0
   const canAddChild = getDepth(task.id) < 4
@@ -296,6 +305,7 @@ export function TaskItem({
             style={{ paddingLeft: `${(depth + 1) * 21 + 10}px` }}
           >
             <Input
+              ref={subtaskInputRef}
               data-testid="subtask-input"
               placeholder="Sub-task..."
               value={childDescription}
@@ -308,7 +318,6 @@ export function TaskItem({
                 }
               }}
               className="h-6 text-sm flex-1"
-              autoFocus
             />
             <Button variant="ghost" size="icon-xs" className="size-5" onClick={handleAddChild}>
               <Check className="size-3" />

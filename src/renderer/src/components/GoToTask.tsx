@@ -92,11 +92,13 @@ export function GoToTask({ open, onClose }: GoToTaskProps): React.JSX.Element | 
       data-testid="go-to-task-overlay"
     >
       <div
-        className="absolute inset-x-0 flex justify-center pl-[80px]"
+        className="absolute inset-x-0 flex justify-center pl-[80px] pointer-events-none"
         style={{ top: 36 }}
-        onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-full max-w-[600px] mx-4 bg-popover border border-border rounded-b-lg shadow-lg overflow-hidden">
+        <div
+          className="w-full max-w-[600px] mx-4 bg-popover border border-border rounded-b-lg shadow-lg overflow-hidden pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Search input */}
           <div className="border-b border-border p-2">
             <input

@@ -5,11 +5,10 @@ import { buildSearchableList, searchTasks } from '@/lib/task-search'
 import { Check, Circle } from 'lucide-react'
 
 interface GoToTaskProps {
-  open: boolean
   onClose: () => void
 }
 
-export function GoToTask({ open, onClose }: GoToTaskProps): React.JSX.Element | null {
+export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
   const [query, setQuery] = useState('')
   const [highlightIndex, setHighlightIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -28,23 +27,18 @@ export function GoToTask({ open, onClose }: GoToTaskProps): React.JSX.Element | 
   const searchableList = useMemo(() => buildSearchableList(tasks, groups), [tasks, groups])
   const results = useMemo(() => searchTasks(query, searchableList), [query, searchableList])
 
-  // Reset state when opening
+  // Focus input on mount
   useEffect(() => {
-    if (open) {
-      setQuery('')
-      setHighlightIndex(0)
-      requestAnimationFrame(() => inputRef.current?.focus())
-    }
-  }, [open])
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }, [])
 
   // Scroll highlighted item into view
   useEffect(() => {
-    if (!open) return
     const list = listRef.current
     if (!list) return
     const item = list.children[highlightIndex] as HTMLElement | undefined
     item?.scrollIntoView({ block: 'nearest' })
-  }, [highlightIndex, open])
+  }, [highlightIndex])
 
   const navigateToTask = useCallback(
     (taskId: string, groupId: string) => {
@@ -82,8 +76,6 @@ export function GoToTask({ open, onClose }: GoToTaskProps): React.JSX.Element | 
     },
     [results, highlightIndex, navigateToTask, onClose]
   )
-
-  if (!open) return null
 
   return (
     <div

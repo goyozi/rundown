@@ -12,20 +12,21 @@
 
 ## File Structure
 
-| Action | File | Responsibility |
-|--------|------|----------------|
-| Modify | `src/main/index.ts:60-74` | Add `titleBarStyle: 'hidden'` + `trafficLightPosition` to BrowserWindow |
-| Create | `src/renderer/src/components/TitleBar.tsx` | 36px drag bar with "Go to Task..." trigger |
-| Create | `src/renderer/src/components/GoToTask.tsx` | Command palette overlay: input, search, results list |
-| Create | `src/renderer/src/lib/task-search.ts` | Pure function: multi-token fuzzy search + match highlighting |
-| Modify | `src/renderer/src/App.tsx` | Add `<TitleBar />` above two-pane layout, adjust flex direction |
-| Create | `tests/go-to-task.spec.ts` | E2E tests for the command palette |
+| Action | File                                       | Responsibility                                                          |
+| ------ | ------------------------------------------ | ----------------------------------------------------------------------- |
+| Modify | `src/main/index.ts:60-74`                  | Add `titleBarStyle: 'hidden'` + `trafficLightPosition` to BrowserWindow |
+| Create | `src/renderer/src/components/TitleBar.tsx` | 36px drag bar with "Go to Task..." trigger                              |
+| Create | `src/renderer/src/components/GoToTask.tsx` | Command palette overlay: input, search, results list                    |
+| Create | `src/renderer/src/lib/task-search.ts`      | Pure function: multi-token fuzzy search + match highlighting            |
+| Modify | `src/renderer/src/App.tsx`                 | Add `<TitleBar />` above two-pane layout, adjust flex direction         |
+| Create | `tests/go-to-task.spec.ts`                 | E2E tests for the command palette                                       |
 
 ---
 
 ### Task 1: Frameless Window (Electron main process)
 
 **Files:**
+
 - Modify: `src/main/index.ts:60-74`
 
 - [ ] **Step 1: Add frameless window options**
@@ -66,6 +67,7 @@ git commit -m "feat: make window frameless on macOS with hidden title bar"
 ### Task 2: TitleBar Component
 
 **Files:**
+
 - Create: `src/renderer/src/components/TitleBar.tsx`
 - Modify: `src/renderer/src/App.tsx`
 
@@ -126,30 +128,30 @@ Replace with:
 And add a closing `</div>` before the existing closing `</div>` of the outer container. The full return block becomes:
 
 ```tsx
-  return (
-    <TooltipProvider delayDuration={400}>
-      <div className="flex flex-col h-screen w-screen bg-background">
-        <TitleBar onGoToTask={() => {}} />
-        <div className="flex flex-1 min-h-0">
-          <aside
-            className="flex-shrink-0 h-full bg-sidebar-bg border-r border-sidebar-border relative"
-            style={{ width: sidebarWidth }}
-          >
-            <TaskList />
-            {/* Resize handle */}
-            <div
-              className="absolute top-0 right-0 w-1 h-full cursor-col-resize z-10 hover:bg-primary/20 active:bg-primary/30 transition-colors"
-              onMouseDown={handleMouseDown}
-              data-testid="sidebar-resize-handle"
-            />
-          </aside>
-          <main className="flex-1 h-full min-w-0">
-            <TaskDetail />
-          </main>
-        </div>
+return (
+  <TooltipProvider delayDuration={400}>
+    <div className="flex flex-col h-screen w-screen bg-background">
+      <TitleBar onGoToTask={() => {}} />
+      <div className="flex flex-1 min-h-0">
+        <aside
+          className="flex-shrink-0 h-full bg-sidebar-bg border-r border-sidebar-border relative"
+          style={{ width: sidebarWidth }}
+        >
+          <TaskList />
+          {/* Resize handle */}
+          <div
+            className="absolute top-0 right-0 w-1 h-full cursor-col-resize z-10 hover:bg-primary/20 active:bg-primary/30 transition-colors"
+            onMouseDown={handleMouseDown}
+            data-testid="sidebar-resize-handle"
+          />
+        </aside>
+        <main className="flex-1 h-full min-w-0">
+          <TaskDetail />
+        </main>
       </div>
-    </TooltipProvider>
-  )
+    </div>
+  </TooltipProvider>
+)
 ```
 
 - [ ] **Step 3: Verify it compiles**
@@ -169,6 +171,7 @@ git commit -m "feat: add TitleBar component with Go to Task trigger"
 ### Task 3: Task Search Logic
 
 **Files:**
+
 - Create: `src/renderer/src/lib/task-search.ts`
 
 - [ ] **Step 1: Create the search module**
@@ -196,10 +199,7 @@ export interface SearchResult {
  * Build a flat list of searchable tasks from the store state.
  * Each task gets a breadcrumb like "GroupName > ParentTask > ChildTask".
  */
-export function buildSearchableList(
-  tasks: Task[],
-  groups: TaskGroup[]
-): SearchableTask[] {
+export function buildSearchableList(tasks: Task[], groups: TaskGroup[]): SearchableTask[] {
   const taskMap = new Map(tasks.map((t) => [t.id, t]))
   const groupMap = new Map(groups.map((g) => [g.id, g]))
 
@@ -323,6 +323,7 @@ git commit -m "feat: add multi-token task search with match highlighting"
 ### Task 4: GoToTask Command Palette Component
 
 **Files:**
+
 - Create: `src/renderer/src/components/GoToTask.tsx`
 
 - [ ] **Step 1: Create GoToTask component**
@@ -561,6 +562,7 @@ git commit -m "feat: add GoToTask command palette component"
 ### Task 5: Wire Up ⌘P Shortcut and GoToTask in App.tsx
 
 **Files:**
+
 - Modify: `src/renderer/src/App.tsx`
 - Modify: `src/renderer/src/components/TitleBar.tsx`
 
@@ -575,24 +577,24 @@ import { GoToTask } from './components/GoToTask'
 Add state inside the `App` component, after the existing `isDragging` ref:
 
 ```typescript
-  const [goToTaskOpen, setGoToTaskOpen] = useState(false)
+const [goToTaskOpen, setGoToTaskOpen] = useState(false)
 ```
 
 Add a ⌘P keyboard listener after the existing `useEffect` blocks (after the PTY exit listener):
 
 ```typescript
-  // Global ⌘P to open Go to Task palette
-  useEffect(() => {
-    const handler = (e: KeyboardEvent): void => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'p' && !e.altKey) {
-        if (document.querySelector('[role="dialog"]')) return
-        e.preventDefault()
-        setGoToTaskOpen(true)
-      }
+// Global ⌘P to open Go to Task palette
+useEffect(() => {
+  const handler = (e: KeyboardEvent): void => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'p' && !e.altKey) {
+      if (document.querySelector('[role="dialog"]')) return
+      e.preventDefault()
+      setGoToTaskOpen(true)
     }
-    document.addEventListener('keydown', handler, true)
-    return () => document.removeEventListener('keydown', handler, true)
-  }, [])
+  }
+  document.addEventListener('keydown', handler, true)
+  return () => document.removeEventListener('keydown', handler, true)
+}, [])
 ```
 
 Update the `<TitleBar>` to pass the real callback:
@@ -610,31 +612,31 @@ Add `<GoToTask>` right after `<TitleBar>`:
 The full return block in App.tsx should now be:
 
 ```tsx
-  return (
-    <TooltipProvider delayDuration={400}>
-      <div className="flex flex-col h-screen w-screen bg-background">
-        <TitleBar onGoToTask={() => setGoToTaskOpen(true)} />
-        <GoToTask open={goToTaskOpen} onClose={() => setGoToTaskOpen(false)} />
-        <div className="flex flex-1 min-h-0">
-          <aside
-            className="flex-shrink-0 h-full bg-sidebar-bg border-r border-sidebar-border relative"
-            style={{ width: sidebarWidth }}
-          >
-            <TaskList />
-            {/* Resize handle */}
-            <div
-              className="absolute top-0 right-0 w-1 h-full cursor-col-resize z-10 hover:bg-primary/20 active:bg-primary/30 transition-colors"
-              onMouseDown={handleMouseDown}
-              data-testid="sidebar-resize-handle"
-            />
-          </aside>
-          <main className="flex-1 h-full min-w-0">
-            <TaskDetail />
-          </main>
-        </div>
+return (
+  <TooltipProvider delayDuration={400}>
+    <div className="flex flex-col h-screen w-screen bg-background">
+      <TitleBar onGoToTask={() => setGoToTaskOpen(true)} />
+      <GoToTask open={goToTaskOpen} onClose={() => setGoToTaskOpen(false)} />
+      <div className="flex flex-1 min-h-0">
+        <aside
+          className="flex-shrink-0 h-full bg-sidebar-bg border-r border-sidebar-border relative"
+          style={{ width: sidebarWidth }}
+        >
+          <TaskList />
+          {/* Resize handle */}
+          <div
+            className="absolute top-0 right-0 w-1 h-full cursor-col-resize z-10 hover:bg-primary/20 active:bg-primary/30 transition-colors"
+            onMouseDown={handleMouseDown}
+            data-testid="sidebar-resize-handle"
+          />
+        </aside>
+        <main className="flex-1 h-full min-w-0">
+          <TaskDetail />
+        </main>
       </div>
-    </TooltipProvider>
-  )
+    </div>
+  </TooltipProvider>
+)
 ```
 
 - [ ] **Step 2: Verify it compiles**
@@ -654,6 +656,7 @@ git commit -m "feat: wire up ⌘P shortcut and GoToTask into App layout"
 ### Task 6: E2E Tests
 
 **Files:**
+
 - Create: `tests/go-to-task.spec.ts`
 
 - [ ] **Step 1: Write E2E tests**
@@ -805,6 +808,7 @@ test.describe('Go to Task command palette', () => {
 Run: `pnpm test:norebuild` (after a `pnpm build` if needed)
 
 If any tests fail, fix the issues. Common things to watch for:
+
 - Timing: may need `waitFor` on overlay visibility
 - `Meta+p` may need to be `Control+p` on some CI environments
 
@@ -834,6 +838,7 @@ Expected: All tests pass, including existing tests (no regressions) and new `go-
 Run: `pnpm dev`
 
 Check:
+
 - Window is frameless with traffic lights visible in top-left
 - 36px drag bar visible across full width
 - "Go to Task..." trigger is centered with ⌘P badge

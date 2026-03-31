@@ -112,7 +112,7 @@ function App(): React.JSX.Element {
     <TooltipProvider delayDuration={400}>
       <div className="flex flex-col h-screen w-screen bg-background">
         <TitleBar onGoToTask={() => setGoToTaskOpen(true)} />
-        <GoToTask open={goToTaskOpen} onClose={() => setGoToTaskOpen(false)} />
+        {goToTaskOpen && <GoToTask onClose={() => setGoToTaskOpen(false)} />}
         <div className="flex flex-1 min-h-0">
           <aside
             className="flex-shrink-0 h-full bg-sidebar-bg border-r border-sidebar-border relative"

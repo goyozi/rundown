@@ -23,17 +23,20 @@ Make the Rundown window frameless on macOS and add a "Go to Task" command palett
 **File:** `src/renderer/src/components/TitleBar.tsx`
 
 **Layout:**
+
 - 36px height, `--sidebar-bg` background, bottom border with `--border`
 - Centered "Go to Task..." trigger, max-width 600px
 - Left padding (~80px) to avoid overlapping traffic lights
 
 **Idle state:**
+
 - Styled div (not a real input) with:
   - "Go to Task..." placeholder, left-aligned, `--muted-foreground` color
   - `⌘P` keyboard badge, right-aligned, `--secondary` color
 - Click opens the command palette
 
 **App.tsx integration:**
+
 - `<TitleBar />` rendered above the existing two-pane flex container
 - Outer layout becomes `flex flex-col h-screen`, two-pane area takes `flex-1`
 
@@ -102,12 +105,14 @@ None.
 ## 5. Visual Reference
 
 Mockups saved in `.superpowers/brainstorm/` during design session:
+
 - `layout-overview-v4.html` — idle state with 36px drag bar
 - `command-palette-active-v2.html` — active state with results dropdown using app palette colors
 
 ## 6. Scope Boundaries
 
 **In scope:**
+
 - Frameless window on macOS
 - TitleBar component with drag region
 - GoToTask command palette (⌘P)
@@ -116,6 +121,7 @@ Mockups saved in `.superpowers/brainstorm/` during design session:
 - Auto-switch group on cross-group navigation
 
 **Out of scope:**
+
 - Non-macOS frameless window support
 - Command palette actions beyond task navigation (no "run command" features)
 - Persisted search history or recent tasks

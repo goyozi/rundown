@@ -18,10 +18,7 @@ export interface SearchResult {
  * Build a flat list of searchable tasks from the store state.
  * Each task gets a breadcrumb like "GroupName > ParentTask > ChildTask".
  */
-export function buildSearchableList(
-  tasks: Task[],
-  groups: TaskGroup[]
-): SearchableTask[] {
+export function buildSearchableList(tasks: Task[], groups: TaskGroup[]): SearchableTask[] {
   const taskMap = new Map(tasks.map((t) => [t.id, t]))
   const groupMap = new Map(groups.map((g) => [g.id, g]))
 

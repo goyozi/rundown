@@ -13,6 +13,7 @@ import {
 import { IPC } from '../shared/channels'
 import { safeHandle } from './ipc-utils'
 import { PtyTerminalBuffer } from './pty-buffer'
+import { getShellEnv } from './shell-env'
 
 // Denylist of env vars that should not leak into PTY sessions.
 // Electron-specific vars could allow escaping the sandbox, and
@@ -27,9 +28,10 @@ const ENV_DENYLIST = new Set([
 ])
 
 function buildSafeEnv(extra: Record<string, string> = {}): Record<string, string> {
+  const shellEnv = getShellEnv()
   const env: Record<string, string> = {}
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined && !ENV_DENYLIST.has(key)) {
+  for (const [key, value] of Object.entries(shellEnv)) {
+    if (!ENV_DENYLIST.has(key)) {
       env[key] = value
     }
   }

@@ -30,26 +30,6 @@ import { safeHandle } from './ipc-utils'
 // ESM has no __dirname — polyfill it from import.meta.url so join() calls below work
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-// When launched from a desktop launcher (Finder on macOS, .desktop on Linux) rather
-// than a terminal, the app gets a minimal PATH (/usr/bin:/bin:/usr/sbin:/sbin).
-// Resolve the user's full login-shell PATH so that spawned PTY sessions can find
-// tools like claude, git, brew, etc.
-if (app.isPackaged && (process.platform === 'darwin' || process.platform === 'linux')) {
-  try {
-    const { execFileSync } = await import('child_process')
-    const loginShell = process.env.SHELL || '/bin/zsh'
-    const result = execFileSync(loginShell, ['-ilc', 'echo $PATH'], {
-      encoding: 'utf-8',
-      timeout: 5000
-    }).trim()
-    if (result) {
-      process.env.PATH = result
-    }
-  } catch {
-    // Fall back to the default PATH — better than crashing
-  }
-}
-
 let mainWindow: BrowserWindow | null = null
 let sessionServer: ReturnType<typeof createSessionServer> | null = null
 

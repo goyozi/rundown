@@ -35,6 +35,9 @@ interface RundownAPI {
   diffUncommitted(dirPath: string): Promise<{ diff: string; error?: string }>
   diffBranch(dirPath: string, mainBranch: string): Promise<{ diff: string; error?: string }>
 
+  // Shell
+  openExternal(url: string): Promise<void>
+
   // Theme
   setNativeTheme(theme: 'light' | 'dark' | 'system'): Promise<void>
 

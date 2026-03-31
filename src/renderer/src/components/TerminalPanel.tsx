@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useCallback } from 'react'
 import { Terminal, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebLinksAddon } from '@xterm/addon-web-links'
 import { useTheme } from '@/hooks/use-theme'
 import '@xterm/xterm/css/xterm.css'
 
@@ -102,6 +103,11 @@ export function TerminalPanel({
 
     const fitAddon = new FitAddon()
     term.loadAddon(fitAddon)
+
+    const webLinksAddon = new WebLinksAddon((e, url) => {
+      if (e.metaKey) window.api.openExternal(url)
+    })
+    term.loadAddon(webLinksAddon)
 
     term.open(containerRef.current)
 

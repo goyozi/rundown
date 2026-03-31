@@ -50,5 +50,8 @@ export const IPC = {
   PTY_KILL: 'pty:kill',
   PTY_DATA: 'pty:data',
   PTY_EXIT: 'pty:exit',
-  PTY_BUFFER_SNAPSHOT: 'pty:buffer-snapshot'
+  PTY_BUFFER_SNAPSHOT: 'pty:buffer-snapshot',
+
+  // Shell
+  SHELL_OPEN_EXTERNAL: 'shell:open-external'
 } as const

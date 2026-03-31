@@ -179,6 +179,15 @@ app.whenReady().then(async () => {
   })
   registerWorktreeHandlers()
 
+  safeHandle(IPC.SHELL_OPEN_EXTERNAL, (_event, url: unknown) => {
+    const parsed = z.string().url().parse(url)
+    if (/^https?:/.test(parsed)) {
+      shell.openExternal(parsed)
+    } else {
+      log.warn('Blocked openExternal for non-HTTP URL:', parsed)
+    }
+  })
+
   safeHandle(IPC.THEME_SET, (_event, theme: unknown) => {
     nativeTheme.themeSource = ThemeSchema.parse(theme)
   })

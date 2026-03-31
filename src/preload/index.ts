@@ -39,6 +39,9 @@ const api = {
   diffBranch: (dirPath: string, mainBranch: string) =>
     ipcRenderer.invoke(IPC.GIT_DIFF_BRANCH, dirPath, mainBranch),
 
+  // Shell
+  openExternal: (url: string) => ipcRenderer.invoke(IPC.SHELL_OPEN_EXTERNAL, url),
+
   // Theme
   setNativeTheme: (theme: 'light' | 'dark' | 'system') => ipcRenderer.invoke(IPC.THEME_SET, theme),
 

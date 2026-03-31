@@ -107,11 +107,6 @@ export function searchTasks(
 
   // Sort: tasks whose description starts with a matched token first,
   // then by breadcrumb length (shorter = higher). Tie-break alphabetical.
-  const descStarts = new Set<string>()
-  for (const token of tokens) {
-    descStarts.add(token)
-  }
-
   results.sort((a, b) => {
     const aDescLower = a.task.description.toLowerCase()
     const bDescLower = b.task.description.toLowerCase()

@@ -66,6 +66,9 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 16, y: 12 } }
+      : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.cjs'),
       sandbox: true

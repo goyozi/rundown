@@ -9,6 +9,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { TitleBar } from './components/TitleBar'
+import { GoToTask } from './components/GoToTask'
 
 const MIN_SIDEBAR = 220
 const MAX_SIDEBAR = 520
@@ -27,6 +28,7 @@ function App(): React.JSX.Element {
   usePaneKeyboardNav()
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR)
   const isDragging = useRef(false)
+  const [goToTaskOpen, setGoToTaskOpen] = useState(false)
 
   const loadComments = useCommentStore((s) => s.loadComments)
 
@@ -44,6 +46,19 @@ function App(): React.JSX.Element {
     })
     return cleanup
   }, [stopSession, cleanupExitedShell])
+
+  // Global ⌘P to open Go to Task palette
+  useEffect(() => {
+    const handler = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'p' && !e.altKey) {
+        if (document.querySelector('[role="dialog"]')) return
+        e.preventDefault()
+        setGoToTaskOpen(true)
+      }
+    }
+    document.addEventListener('keydown', handler, true)
+    return () => document.removeEventListener('keydown', handler, true)
+  }, [])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -96,7 +111,8 @@ function App(): React.JSX.Element {
   return (
     <TooltipProvider delayDuration={400}>
       <div className="flex flex-col h-screen w-screen bg-background">
-        <TitleBar onGoToTask={() => {}} />
+        <TitleBar onGoToTask={() => setGoToTaskOpen(true)} />
+        <GoToTask open={goToTaskOpen} onClose={() => setGoToTaskOpen(false)} />
         <div className="flex flex-1 min-h-0">
           <aside
             className="flex-shrink-0 h-full bg-sidebar-bg border-r border-sidebar-border relative"

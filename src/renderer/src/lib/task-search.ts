@@ -57,7 +57,7 @@ export function buildSearchableList(
 export function searchTasks(
   query: string,
   items: SearchableTask[],
-  limit: number = 15
+  limit: number = 8
 ): SearchResult[] {
   const raw = query.trim()
   if (!raw) return items.slice(0, limit).map((task) => ({ task, matchedIndices: [] }))

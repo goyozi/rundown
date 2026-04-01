@@ -10,10 +10,10 @@ interface IconPickerProps {
 
 export function IconPicker({ value, onChange }: IconPickerProps): React.JSX.Element {
   const [query, setQuery] = useState('')
+  const [hoveredIcon, setHoveredIcon] = useState<string | null>(null)
 
   const results = useMemo(() => {
     const searched = searchIcons(query)
-    // Always include the currently selected icon so the user can see their selection
     if (value && !searched.includes(value)) {
       return [value, ...searched]
     }
@@ -28,7 +28,10 @@ export function IconPicker({ value, onChange }: IconPickerProps): React.JSX.Elem
         placeholder="Search icons..."
         className="h-8 text-xs"
       />
-      <div className="grid grid-cols-8 gap-1 max-h-[180px] overflow-y-auto">
+      <div
+        className="grid grid-cols-8 gap-1 max-h-[180px] overflow-y-auto"
+        onMouseLeave={() => setHoveredIcon(null)}
+      >
         {results.map((name) => {
           const IconComponent = icons[name as keyof typeof icons]
           if (!IconComponent) return null
@@ -36,7 +39,6 @@ export function IconPicker({ value, onChange }: IconPickerProps): React.JSX.Elem
             <button
               key={name}
               type="button"
-              title={name}
               data-testid={`shortcut-icon-option-${name}`}
               className={`size-9 flex items-center justify-center rounded-md transition-colors ${
                 value === name
@@ -44,6 +46,7 @@ export function IconPicker({ value, onChange }: IconPickerProps): React.JSX.Elem
                   : 'bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
               }`}
               onClick={() => onChange(name)}
+              onMouseEnter={() => setHoveredIcon(name)}
             >
               <IconComponent className="size-4" />
             </button>
@@ -54,6 +57,9 @@ export function IconPicker({ value, onChange }: IconPickerProps): React.JSX.Elem
             No icons found
           </div>
         )}
+      </div>
+      <div className="h-4 text-[11px] text-muted-foreground/60 truncate">
+        {hoveredIcon ?? value}
       </div>
     </div>
   )

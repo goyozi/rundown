@@ -21,7 +21,7 @@ export function TitleBar({ onGoToTask }: TitleBarProps): React.JSX.Element {
           ⌘P
         </kbd>
       </button>
-      <div className="absolute right-3">
+      <div className="absolute right-4">
         <ShortcutBar />
       </div>
     </div>

@@ -43,6 +43,7 @@ function ShortcutForm({
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Git Pull"
           className="h-8 text-sm"
+          data-testid="shortcut-name-input"
         />
       </div>
 
@@ -54,6 +55,7 @@ function ShortcutForm({
             <button
               key={t}
               type="button"
+              data-testid={`shortcut-type-${t}`}
               className={`flex-1 px-2 h-7 rounded-sm text-xs transition-colors ${
                 type === t
                   ? 'bg-accent text-accent-foreground'
@@ -77,6 +79,7 @@ function ShortcutForm({
             type === 'shell' ? 'e.g. git pull' : 'e.g. create a PR for the current branch'
           }
           className="h-8 text-xs font-mono"
+          data-testid="shortcut-command-input"
         />
       </div>
 
@@ -91,7 +94,12 @@ function ShortcutForm({
         <Button variant="outline" size="sm" onClick={onCancel}>
           Cancel
         </Button>
-        <Button size="sm" disabled={!canSave} onClick={handleSave}>
+        <Button
+          size="sm"
+          disabled={!canSave}
+          onClick={handleSave}
+          data-testid="shortcut-save-button"
+        >
           {initial ? 'Save' : 'Add Shortcut'}
         </Button>
       </div>

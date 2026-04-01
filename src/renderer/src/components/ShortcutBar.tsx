@@ -56,6 +56,7 @@ function SortableShortcutButton({
                 {...attributes}
                 {...listeners}
                 className="no-drag size-[26px] flex items-center justify-center rounded-md bg-background/60 border border-border text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors cursor-pointer"
+                data-testid="shortcut-button"
                 onClick={() => executeShortcut(shortcut)}
               >
                 {IconComponent ? <IconComponent className="size-3.5" /> : null}
@@ -68,8 +69,14 @@ function SortableShortcutButton({
         </TooltipProvider>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-36">
-        <ContextMenuItem onClick={() => onEdit(shortcut)}>Edit</ContextMenuItem>
-        <ContextMenuItem className="text-destructive" onClick={() => onDelete(shortcut.id)}>
+        <ContextMenuItem data-testid="shortcut-context-edit" onClick={() => onEdit(shortcut)}>
+          Edit
+        </ContextMenuItem>
+        <ContextMenuItem
+          data-testid="shortcut-context-delete"
+          className="text-destructive"
+          onClick={() => onDelete(shortcut.id)}
+        >
           Delete
         </ContextMenuItem>
       </ContextMenuContent>
@@ -150,6 +157,7 @@ export function ShortcutBar(): React.JSX.Element {
         {hasShortcuts ? (
           <button
             className="size-[26px] flex items-center justify-center rounded-md text-muted-foreground/35 hover:text-muted-foreground/60 transition-colors cursor-pointer"
+            data-testid="add-shortcut-icon-button"
             onClick={handleAdd}
             title="Add Shortcut"
           >
@@ -158,6 +166,7 @@ export function ShortcutBar(): React.JSX.Element {
         ) : (
           <button
             className="flex items-center gap-1.5 px-2.5 h-7 rounded-md border border-primary/25 bg-primary/10 text-primary text-xs hover:bg-primary/15 transition-colors cursor-pointer"
+            data-testid="add-shortcut-button"
             onClick={handleAdd}
           >
             <Plus className="size-3" />

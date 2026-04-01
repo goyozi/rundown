@@ -93,9 +93,7 @@ test.describe('shortcuts', () => {
     await page.getByTestId('shortcut-save-button').click()
     await page.getByRole('dialog').waitFor({ state: 'hidden' })
 
-    await expect(
-      page.locator('[data-testid="shortcut-button"][title="New name"]')
-    ).toBeVisible()
+    await expect(page.locator('[data-testid="shortcut-button"][title="New name"]')).toBeVisible()
     await expect(
       page.locator('[data-testid="shortcut-button"][title="Old name"]')
     ).not.toBeVisible()

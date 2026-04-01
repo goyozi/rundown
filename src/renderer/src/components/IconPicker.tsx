@@ -29,6 +29,7 @@ export function IconPicker({ value, onChange }: IconPickerProps): React.JSX.Elem
               key={name}
               type="button"
               title={name}
+              data-testid={`shortcut-icon-option-${name}`}
               className={`size-9 flex items-center justify-center rounded-md transition-colors ${
                 value === name
                   ? 'bg-accent text-accent-foreground'

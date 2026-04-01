@@ -10,6 +10,8 @@ export const IPC = {
   STORE_SAVE_SIDEBAR_WIDTH: 'store:save-sidebar-width',
   STORE_GET_ROOT_TASK_ORDER: 'store:get-root-task-order',
   STORE_SAVE_ROOT_TASK_ORDER: 'store:save-root-task-order',
+  STORE_GET_SHORTCUTS: 'store:get-shortcuts',
+  STORE_SAVE_SHORTCUTS: 'store:save-shortcuts',
 
   // Dialog
   DIALOG_OPEN_DIRECTORY: 'dialog:open-directory',

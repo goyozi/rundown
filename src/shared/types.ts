@@ -48,3 +48,12 @@ export interface Comment {
   lineNumber: number
   body: string
 }
+
+export interface Shortcut {
+  id: string
+  name: string
+  icon: string
+  type: 'shell' | 'claude'
+  command: string
+  order: number
+}

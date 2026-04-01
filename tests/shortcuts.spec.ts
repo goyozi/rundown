@@ -61,8 +61,9 @@ test.describe('shortcuts', () => {
     const btn = page.locator('[data-testid="shortcut-button"][title="My shortcut"]')
     await btn.hover()
 
-    // The tooltip renders the shortcut name
-    await expect(page.getByText('My shortcut')).toBeVisible()
+    // The tooltip renders the shortcut name (delay 300ms + render time)
+    await expect(page.getByTestId('shortcut-tooltip')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByTestId('shortcut-tooltip')).toContainText('My shortcut')
   })
 
   test('can delete a shortcut via context menu', async () => {

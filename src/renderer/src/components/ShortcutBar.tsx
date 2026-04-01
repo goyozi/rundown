@@ -45,10 +45,10 @@ function SortableShortcutButton({
   }
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <TooltipProvider delayDuration={300}>
-          <Tooltip>
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
             <TooltipTrigger asChild>
               <button
                 ref={setNodeRef}
@@ -57,30 +57,31 @@ function SortableShortcutButton({
                 {...listeners}
                 className="no-drag size-[26px] flex items-center justify-center rounded-md bg-background/60 border border-border text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors cursor-pointer"
                 data-testid="shortcut-button"
+                title={shortcut.name}
                 onClick={() => executeShortcut(shortcut)}
               >
                 {IconComponent ? <IconComponent className="size-3.5" /> : null}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              {shortcut.name}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </ContextMenuTrigger>
-      <ContextMenuContent className="w-36">
-        <ContextMenuItem data-testid="shortcut-context-edit" onClick={() => onEdit(shortcut)}>
-          Edit
-        </ContextMenuItem>
-        <ContextMenuItem
-          data-testid="shortcut-context-delete"
-          className="text-destructive"
-          onClick={() => onDelete(shortcut.id)}
-        >
-          Delete
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-36">
+            <ContextMenuItem data-testid="shortcut-context-edit" onClick={() => onEdit(shortcut)}>
+              Edit
+            </ContextMenuItem>
+            <ContextMenuItem
+              data-testid="shortcut-context-delete"
+              className="text-destructive"
+              onClick={() => onDelete(shortcut.id)}
+            >
+              Delete
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+        <TooltipContent side="bottom" className="text-xs" data-testid="shortcut-tooltip">
+          {shortcut.name}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 

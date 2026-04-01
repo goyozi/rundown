@@ -24,6 +24,8 @@ export const CURATED_ICON_NAMES: string[] = [
   'code'
 ]
 
+const allIconNames = Object.keys(icons)
+
 /**
  * Search lucide icons by name. Returns icon names matching the query.
  * If query is empty, returns curated list.
@@ -32,7 +34,5 @@ export function searchIcons(query: string, limit: number = 40): string[] {
   const trimmed = query.trim().toLowerCase()
   if (!trimmed) return CURATED_ICON_NAMES
 
-  return Object.keys(icons)
-    .filter((name) => name.toLowerCase().includes(trimmed))
-    .slice(0, limit)
+  return allIconNames.filter((name) => name.toLowerCase().includes(trimmed)).slice(0, limit)
 }

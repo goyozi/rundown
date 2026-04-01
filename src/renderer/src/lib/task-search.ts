@@ -47,6 +47,40 @@ export function buildSearchableList(tasks: Task[], groups: TaskGroup[]): Searcha
 }
 
 /**
+ * Multi-token partial-word matching.
+ * Each space-separated token must match somewhere in the text (case-insensitive).
+ * Returns matched character indices or null if not all tokens matched.
+ */
+function matchTokens(text: string, tokens: string[]): number[] | null {
+  const lower = text.toLowerCase()
+  const matchedIndices: number[] = []
+  const used = new Set<number>()
+
+  for (const token of tokens) {
+    let pos = 0
+    let found = false
+    while (pos <= lower.length - token.length) {
+      const idx = lower.indexOf(token, pos)
+      if (idx === -1) break
+      const indices = Array.from({ length: token.length }, (_, i) => idx + i)
+      if (indices.every((i) => !used.has(i))) {
+        indices.forEach((i) => {
+          matchedIndices.push(i)
+          used.add(i)
+        })
+        found = true
+        break
+      }
+      pos = idx + 1
+    }
+    if (!found) return null
+  }
+
+  matchedIndices.sort((a, b) => a - b)
+  return matchedIndices
+}
+
+/**
  * Multi-token partial-word search.
  * Each space-separated token must match somewhere in the breadcrumb (case-insensitive).
  * Returns matched results with character indices for highlighting.
@@ -60,44 +94,11 @@ export function searchTasks(
   if (!raw) return items.slice(0, limit).map((task) => ({ task, matchedIndices: [] }))
 
   const tokens = raw.toLowerCase().split(/\s+/)
-
   const results: SearchResult[] = []
 
   for (const item of items) {
-    const lower = item.breadcrumb.toLowerCase()
-
-    // Check that every token matches somewhere
-    let allMatch = true
-    const matchedIndices: number[] = []
-    const used = new Set<number>() // prevent double-matching same char
-
-    for (const token of tokens) {
-      let pos = 0
-      let found = false
-      // Find the first occurrence that doesn't overlap with already-matched chars
-      while (pos <= lower.length - token.length) {
-        const idx = lower.indexOf(token, pos)
-        if (idx === -1) break
-        // Check no overlap
-        const indices = Array.from({ length: token.length }, (_, i) => idx + i)
-        if (indices.every((i) => !used.has(i))) {
-          indices.forEach((i) => {
-            matchedIndices.push(i)
-            used.add(i)
-          })
-          found = true
-          break
-        }
-        pos = idx + 1
-      }
-      if (!found) {
-        allMatch = false
-        break
-      }
-    }
-
-    if (allMatch) {
-      matchedIndices.sort((a, b) => a - b)
+    const matchedIndices = matchTokens(item.breadcrumb, tokens)
+    if (matchedIndices) {
       results.push({ task: item, matchedIndices })
     }
   }
@@ -139,36 +140,8 @@ export function searchShortcuts(
   const results: ShortcutSearchResult[] = []
 
   for (const shortcut of shortcuts) {
-    const lower = shortcut.name.toLowerCase()
-    let allMatch = true
-    const matchedIndices: number[] = []
-    const used = new Set<number>()
-
-    for (const token of tokens) {
-      let pos = 0
-      let found = false
-      while (pos <= lower.length - token.length) {
-        const idx = lower.indexOf(token, pos)
-        if (idx === -1) break
-        const indices = Array.from({ length: token.length }, (_, i) => idx + i)
-        if (indices.every((i) => !used.has(i))) {
-          indices.forEach((i) => {
-            matchedIndices.push(i)
-            used.add(i)
-          })
-          found = true
-          break
-        }
-        pos = idx + 1
-      }
-      if (!found) {
-        allMatch = false
-        break
-      }
-    }
-
-    if (allMatch) {
-      matchedIndices.sort((a, b) => a - b)
+    const matchedIndices = matchTokens(shortcut.name, tokens)
+    if (matchedIndices) {
       results.push({ shortcut, matchedIndices })
     }
   }

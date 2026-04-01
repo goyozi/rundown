@@ -10,12 +10,12 @@ Users want quick-access buttons for common operations like git pull, creating PR
 
 ```ts
 type Shortcut = {
-  id: string           // crypto.randomUUID()
-  name: string         // display name, e.g. "Git Pull"
-  icon: string         // lucide icon name, e.g. "git-pull-request"
+  id: string // crypto.randomUUID()
+  name: string // display name, e.g. "Git Pull"
+  icon: string // lucide icon name, e.g. "git-pull-request"
   type: 'shell' | 'claude'
-  command: string      // the text to send to the terminal
-  order: number        // sort position (0-based)
+  command: string // the text to send to the terminal
+  order: number // sort position (0-based)
 }
 ```
 
@@ -31,10 +31,10 @@ The title bar gains a shortcuts area on the right side:
                                             add button
 ```
 
-- **+ button**: leftmost in the shortcuts area. Borderless, gray plus icon at low opacity (~35%). Hover brightens slightly. Click opens the Add Shortcut dialog. No border, no background — style over discoverability.
+- **+ button (empty state)**: when no shortcuts exist, displays as a visible button with border, blue-violet accent tint, and a "+ Add shortcut" label. Discoverable and inviting for first-time users.
+- **+ button (has shortcuts)**: once the user has at least one shortcut, collapses to a minimal borderless gray plus icon at low opacity (~35%). Hover brightens slightly. They already know about the feature — style over discoverability.
 - **Shortcut buttons**: 26×26px, subtle `bg-background/60` with `border-border`, matching the existing title bar aesthetic. Tooltip shows the shortcut name on hover.
 - **Overflow**: the search bar has higher z-index. If shortcuts overflow, they tuck behind the search bar. No cap on shortcut count.
-- **Empty state**: just the + button visible, nothing else.
 
 The search bar placeholder text changes from "Go to Task…" to "Go to... / Run...".
 

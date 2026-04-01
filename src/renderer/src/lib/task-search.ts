@@ -1,4 +1,4 @@
-import type { Task, TaskGroup } from '../../../shared/types'
+import type { Task, TaskGroup, Shortcut } from '../../../shared/types'
 
 export interface SearchableTask {
   id: string
@@ -114,6 +114,72 @@ export function searchTasks(
       return a.task.breadcrumb.length - b.task.breadcrumb.length
     }
     return a.task.breadcrumb.localeCompare(b.task.breadcrumb)
+  })
+
+  return results.slice(0, limit)
+}
+
+export interface ShortcutSearchResult {
+  shortcut: Shortcut
+  matchedIndices: number[]
+}
+
+/**
+ * Search shortcuts by name. Same multi-token matching as tasks but against shortcut name.
+ */
+export function searchShortcuts(
+  query: string,
+  shortcuts: Shortcut[],
+  limit: number = 4
+): ShortcutSearchResult[] {
+  const raw = query.trim()
+  if (!raw) return shortcuts.slice(0, limit).map((shortcut) => ({ shortcut, matchedIndices: [] }))
+
+  const tokens = raw.toLowerCase().split(/\s+/)
+  const results: ShortcutSearchResult[] = []
+
+  for (const shortcut of shortcuts) {
+    const lower = shortcut.name.toLowerCase()
+    let allMatch = true
+    const matchedIndices: number[] = []
+    const used = new Set<number>()
+
+    for (const token of tokens) {
+      let pos = 0
+      let found = false
+      while (pos <= lower.length - token.length) {
+        const idx = lower.indexOf(token, pos)
+        if (idx === -1) break
+        const indices = Array.from({ length: token.length }, (_, i) => idx + i)
+        if (indices.every((i) => !used.has(i))) {
+          indices.forEach((i) => {
+            matchedIndices.push(i)
+            used.add(i)
+          })
+          found = true
+          break
+        }
+        pos = idx + 1
+      }
+      if (!found) {
+        allMatch = false
+        break
+      }
+    }
+
+    if (allMatch) {
+      matchedIndices.sort((a, b) => a - b)
+      results.push({ shortcut, matchedIndices })
+    }
+  }
+
+  results.sort((a, b) => {
+    const aLower = a.shortcut.name.toLowerCase()
+    const bLower = b.shortcut.name.toLowerCase()
+    const aStarts = tokens.some((t) => aLower.startsWith(t)) ? 0 : 1
+    const bStarts = tokens.some((t) => bLower.startsWith(t)) ? 0 : 1
+    if (aStarts !== bStarts) return aStarts - bStarts
+    return aLower.localeCompare(bLower)
   })
 
   return results.slice(0, limit)

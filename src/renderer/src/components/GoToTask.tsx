@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { useTaskStore } from '@/store/task-store'
 import { useShallow } from 'zustand/react/shallow'
-import { buildSearchableList, searchTasks } from '@/lib/task-search'
-import { Check, Circle } from 'lucide-react'
+import { buildSearchableList, searchTasks, searchShortcuts } from '@/lib/task-search'
+import { Check, Circle, icons } from 'lucide-react'
+import { executeShortcut } from '@/lib/execute-shortcut'
 
 interface GoToTaskProps {
   onClose: () => void
@@ -14,18 +15,25 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const { tasks, groups, activeGroupId, setActiveGroup, selectTask } = useTaskStore(
+  const { tasks, groups, activeGroupId, setActiveGroup, selectTask, shortcuts } = useTaskStore(
     useShallow((s) => ({
       tasks: s.tasks,
       groups: s.groups,
       activeGroupId: s.activeGroupId,
       setActiveGroup: s.setActiveGroup,
-      selectTask: s.selectTask
+      selectTask: s.selectTask,
+      shortcuts: s.shortcuts
     }))
   )
 
   const searchableList = useMemo(() => buildSearchableList(tasks, groups), [tasks, groups])
   const results = useMemo(() => searchTasks(query, searchableList), [query, searchableList])
+
+  const shortcutResults = useMemo(
+    () => searchShortcuts(query, shortcuts),
+    [query, shortcuts]
+  )
+  const totalResults = results.length + shortcutResults.length
 
   // Focus input on mount
   useEffect(() => {
@@ -59,22 +67,28 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
     (e: React.KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
-        setHighlightIndex((i) => Math.min(i + 1, results.length - 1))
+        setHighlightIndex((i) => Math.min(i + 1, totalResults - 1))
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
         setHighlightIndex((i) => Math.max(i - 1, 0))
       } else if (e.key === 'Enter') {
         e.preventDefault()
-        const result = results[highlightIndex]
-        if (result) {
-          navigateToTask(result.task.id, result.task.groupId)
+        if (highlightIndex < results.length) {
+          const result = results[highlightIndex]
+          if (result) navigateToTask(result.task.id, result.task.groupId)
+        } else {
+          const scResult = shortcutResults[highlightIndex - results.length]
+          if (scResult) {
+            executeShortcut(scResult.shortcut)
+            onClose()
+          }
         }
       } else if (e.key === 'Escape') {
         e.preventDefault()
         onClose()
       }
     },
-    [results, highlightIndex, navigateToTask, onClose]
+    [results, shortcutResults, totalResults, highlightIndex, navigateToTask, onClose]
   )
 
   return (
@@ -102,7 +116,7 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
                 setHighlightIndex(0)
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Go to Task…"
+              placeholder="Go to... / Run..."
               className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
               data-testid="go-to-task-input"
             />
@@ -110,9 +124,9 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
 
           {/* Results */}
           <div ref={listRef} className="max-h-[420px] overflow-y-auto" role="listbox">
-            {results.length === 0 && query.trim() && (
+            {results.length === 0 && shortcutResults.length === 0 && query.trim() && (
               <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                No matching tasks
+                No matching tasks or shortcuts
               </div>
             )}
             {results.map((result, index) => (
@@ -148,6 +162,50 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
                 </span>
               </div>
             ))}
+            {shortcutResults.length > 0 && (
+              <>
+                {results.length > 0 && (
+                  <div className="px-3 py-1 text-[11px] text-muted-foreground/50 uppercase tracking-wider">
+                    Shortcuts
+                  </div>
+                )}
+                {shortcutResults.map((result, index) => {
+                  const globalIndex = results.length + index
+                  const IconComponent = icons[result.shortcut.icon as keyof typeof icons]
+                  return (
+                    <div
+                      key={result.shortcut.id}
+                      role="option"
+                      aria-selected={globalIndex === highlightIndex}
+                      className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer text-sm ${
+                        globalIndex === highlightIndex ? 'bg-accent' : 'hover:bg-accent/50'
+                      }`}
+                      onClick={() => {
+                        executeShortcut(result.shortcut)
+                        onClose()
+                      }}
+                      onMouseEnter={() => setHighlightIndex(globalIndex)}
+                      data-testid="go-to-task-shortcut-result"
+                    >
+                      {IconComponent ? (
+                        <IconComponent className="size-3.5 text-muted-foreground shrink-0" />
+                      ) : (
+                        <Circle className="size-3.5 text-muted-foreground shrink-0" />
+                      )}
+                      <span className="flex-1 truncate text-muted-foreground">
+                        <HighlightedBreadcrumb
+                          text={result.shortcut.name}
+                          matchedIndices={result.matchedIndices}
+                        />
+                      </span>
+                      <span className="text-xs text-muted-foreground/60 shrink-0">
+                        Run
+                      </span>
+                    </div>
+                  )
+                })}
+              </>
+            )}
           </div>
 
           {/* Footer */}
@@ -156,7 +214,7 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
               <kbd className="bg-muted px-1 py-0.5 rounded text-[10px]">↑↓</kbd> navigate
             </span>
             <span>
-              <kbd className="bg-muted px-1 py-0.5 rounded text-[10px]">Enter</kbd> go to task
+              <kbd className="bg-muted px-1 py-0.5 rounded text-[10px]">Enter</kbd> go / run
             </span>
             <span>
               <kbd className="bg-muted px-1 py-0.5 rounded text-[10px]">Esc</kbd> close

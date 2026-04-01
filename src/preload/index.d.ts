@@ -1,5 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import type { Task, TaskGroup, Comment, AppSettings, WorktreeRecord } from '../shared/types'
+import type { Task, TaskGroup, Comment, AppSettings, WorktreeRecord, Shortcut } from '../shared/types'
 
 interface RundownAPI {
   getTasks(): Promise<Task[]>
@@ -12,6 +12,8 @@ interface RundownAPI {
   saveSidebarWidth(width: number): Promise<void>
   getRootTaskOrder(): Promise<Record<string, string[]>>
   saveRootTaskOrder(order: Record<string, string[]>): Promise<void>
+  getShortcuts(): Promise<Shortcut[]>
+  saveShortcuts(shortcuts: Shortcut[]): Promise<void>
   getComments(): Promise<Record<string, Comment[]>>
   saveComments(comments: Record<string, Comment[]>): Promise<void>
   logError(message: string, stack?: string): void

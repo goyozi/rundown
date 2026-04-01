@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { Task, TaskGroup, Comment, AppSettings, WorktreeRecord } from '../shared/types'
+import type { Task, TaskGroup, Comment, AppSettings, WorktreeRecord, Shortcut } from '../shared/types'
 import { IPC } from '../shared/channels'
 
 const api = {
@@ -15,6 +15,8 @@ const api = {
   getRootTaskOrder: () => ipcRenderer.invoke(IPC.STORE_GET_ROOT_TASK_ORDER),
   saveRootTaskOrder: (order: Record<string, string[]>) =>
     ipcRenderer.invoke(IPC.STORE_SAVE_ROOT_TASK_ORDER, order),
+  getShortcuts: () => ipcRenderer.invoke(IPC.STORE_GET_SHORTCUTS),
+  saveShortcuts: (shortcuts: Shortcut[]) => ipcRenderer.invoke(IPC.STORE_SAVE_SHORTCUTS, shortcuts),
   getComments: () => ipcRenderer.invoke(IPC.STORE_GET_COMMENTS),
   saveComments: (comments: Record<string, Comment[]>) =>
     ipcRenderer.invoke(IPC.STORE_SAVE_COMMENTS, comments),

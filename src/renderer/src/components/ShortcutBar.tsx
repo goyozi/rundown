@@ -18,7 +18,6 @@ import {
   ContextMenuItem,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTaskStore } from '@/store/task-store'
 import { useShallow } from 'zustand/react/shallow'
 import { ShortcutDialog } from './ShortcutDialog'
@@ -45,43 +44,34 @@ function SortableShortcutButton({
   }
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <ContextMenu>
-          <ContextMenuTrigger asChild>
-            <TooltipTrigger asChild>
-              <button
-                ref={setNodeRef}
-                style={style}
-                {...attributes}
-                {...listeners}
-                className="no-drag size-[26px] flex items-center justify-center rounded-md bg-background/60 border border-border text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors cursor-pointer"
-                data-testid="shortcut-button"
-                title={shortcut.name}
-                onClick={() => executeShortcut(shortcut)}
-              >
-                {IconComponent ? <IconComponent className="size-3.5" /> : null}
-              </button>
-            </TooltipTrigger>
-          </ContextMenuTrigger>
-          <ContextMenuContent className="w-36">
-            <ContextMenuItem data-testid="shortcut-context-edit" onClick={() => onEdit(shortcut)}>
-              Edit
-            </ContextMenuItem>
-            <ContextMenuItem
-              data-testid="shortcut-context-delete"
-              className="text-destructive"
-              onClick={() => onDelete(shortcut.id)}
-            >
-              Delete
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
-        <TooltipContent side="bottom" className="text-xs" data-testid="shortcut-tooltip">
-          {shortcut.name}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <button
+          ref={setNodeRef}
+          style={style}
+          {...attributes}
+          {...listeners}
+          className="no-drag size-[26px] flex items-center justify-center rounded-md bg-background/60 border border-border text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors cursor-pointer"
+          data-testid="shortcut-button"
+          title={shortcut.name}
+          onClick={() => executeShortcut(shortcut)}
+        >
+          {IconComponent ? <IconComponent className="size-3.5" /> : null}
+        </button>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-36">
+        <ContextMenuItem data-testid="shortcut-context-edit" onClick={() => onEdit(shortcut)}>
+          Edit
+        </ContextMenuItem>
+        <ContextMenuItem
+          data-testid="shortcut-context-delete"
+          className="text-destructive"
+          onClick={() => onDelete(shortcut.id)}
+        >
+          Delete
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
@@ -155,24 +145,16 @@ export function ShortcutBar(): React.JSX.Element {
     <>
       <div className="no-drag flex items-center gap-1">
         {/* + button */}
-        {hasShortcuts ? (
-          <button
-            className="size-[26px] flex items-center justify-center rounded-md text-muted-foreground/35 hover:text-muted-foreground/60 transition-colors cursor-pointer"
-            data-testid="add-shortcut-icon-button"
-            onClick={handleAdd}
-            title="Add Shortcut"
-          >
-            <Plus className="size-3.5" />
-          </button>
-        ) : (
-          <button
-            className="flex items-center gap-1.5 px-2.5 h-7 rounded-md border border-primary/25 bg-primary/10 text-primary text-xs hover:bg-primary/15 transition-colors cursor-pointer"
-            data-testid="add-shortcut-button"
-            onClick={handleAdd}
-          >
-            <Plus className="size-3" />
-            Add shortcut
-          </button>
+        <button
+          className="size-[26px] flex items-center justify-center rounded-md text-muted-foreground/35 hover:text-muted-foreground/60 transition-colors cursor-pointer"
+          data-testid="add-shortcut-icon-button"
+          onClick={handleAdd}
+          title="Add Shortcut"
+        >
+          <Plus className="size-3.5" />
+        </button>
+        {!hasShortcuts && (
+          <span className="text-xs text-muted-foreground/35 select-none">No shortcuts</span>
         )}
 
         {/* Shortcut buttons */}

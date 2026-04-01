@@ -23,10 +23,11 @@ async function openGoToTask(page: Page): Promise<void> {
 }
 
 test.describe('shortcuts', () => {
-  test('shows add shortcut button when no shortcuts exist', async () => {
+  test('shows add button and placeholder when no shortcuts exist', async () => {
     ;({ app, page } = await launchApp())
 
-    await expect(page.getByTestId('add-shortcut-button')).toBeVisible()
+    await expect(page.getByTestId('add-shortcut-icon-button')).toBeVisible()
+    await expect(page.getByText('No shortcuts')).toBeVisible()
   })
 
   test('can add a shell shortcut', async () => {
@@ -37,6 +38,7 @@ test.describe('shortcuts', () => {
     const buttons = getShortcutButtons(page)
     await expect(buttons).toHaveCount(1)
     await expect(buttons.first()).toHaveAttribute('title', 'Run tests')
+    await expect(page.getByText('No shortcuts')).not.toBeVisible()
   })
 
   test('can add a claude shortcut', async () => {
@@ -53,19 +55,6 @@ test.describe('shortcuts', () => {
     await expect(buttons.first()).toHaveAttribute('title', 'Fix lint')
   })
 
-  test('shortcut button shows tooltip on hover', async () => {
-    ;({ app, page } = await launchApp())
-
-    await addShortcut(page, { name: 'My shortcut', command: 'echo hello' })
-
-    const btn = page.locator('[data-testid="shortcut-button"][title="My shortcut"]')
-    await btn.hover()
-
-    // The tooltip renders the shortcut name (delay 300ms + render time)
-    await expect(page.getByTestId('shortcut-tooltip')).toBeVisible({ timeout: 5000 })
-    await expect(page.getByTestId('shortcut-tooltip')).toContainText('My shortcut')
-  })
-
   test('can delete a shortcut via context menu', async () => {
     ;({ app, page } = await launchApp())
 
@@ -75,6 +64,7 @@ test.describe('shortcuts', () => {
     await deleteShortcut(page, 'To delete')
 
     await expect(getShortcutButtons(page)).toHaveCount(0)
+    await expect(page.getByText('No shortcuts')).toBeVisible()
   })
 
   test('can edit a shortcut', async () => {
@@ -84,7 +74,6 @@ test.describe('shortcuts', () => {
 
     await editShortcut(page, 'Old name')
 
-    // Dialog should be pre-populated — update name and command
     const nameInput = page.getByTestId('shortcut-name-input')
     await expect(nameInput).toHaveValue('Old name')
 
@@ -128,18 +117,5 @@ test.describe('shortcuts', () => {
     const buttons = getShortcutButtons(page)
     await expect(buttons).toHaveCount(1)
     await expect(buttons.first()).toHaveAttribute('title', 'Persistent shortcut')
-  })
-
-  test('add button becomes subtle after first shortcut', async () => {
-    ;({ app, page } = await launchApp())
-
-    // Prominent button visible before any shortcuts
-    await expect(page.getByTestId('add-shortcut-button')).toBeVisible()
-
-    await addShortcut(page, { name: 'First shortcut', command: 'echo first' })
-
-    // Prominent button gone, only the icon button remains
-    await expect(page.getByTestId('add-shortcut-button')).not.toBeVisible()
-    await expect(page.getByTestId('add-shortcut-icon-button')).toBeVisible()
   })
 })

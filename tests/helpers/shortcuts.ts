@@ -10,15 +10,7 @@ export interface ShortcutOptions {
 export async function addShortcut(page: Page, opts: ShortcutOptions): Promise<void> {
   const { name, type = 'shell', command, icon } = opts
 
-  // Click either the prominent "+ Add shortcut" button or the subtle "+" icon
-  const prominentBtn = page.getByTestId('add-shortcut-button')
-  const subtleBtn = page.getByTestId('add-shortcut-icon-button')
-
-  if (await prominentBtn.isVisible({ timeout: 500 }).catch(() => false)) {
-    await prominentBtn.click()
-  } else {
-    await subtleBtn.click()
-  }
+  await page.getByTestId('add-shortcut-icon-button').click()
 
   // Wait for dialog to open
   await page.getByRole('dialog').waitFor({ state: 'visible' })

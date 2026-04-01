@@ -10,7 +10,15 @@ interface IconPickerProps {
 
 export function IconPicker({ value, onChange }: IconPickerProps): React.JSX.Element {
   const [query, setQuery] = useState('')
-  const results = useMemo(() => searchIcons(query), [query])
+
+  const results = useMemo(() => {
+    const searched = searchIcons(query)
+    // Always include the currently selected icon so the user can see their selection
+    if (value && !searched.includes(value)) {
+      return [value, ...searched]
+    }
+    return searched
+  }, [query, value])
 
   return (
     <div className="space-y-2">

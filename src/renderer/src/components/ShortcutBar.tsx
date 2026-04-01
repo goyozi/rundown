@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { icons } from 'lucide-react'
 import {
@@ -92,8 +92,8 @@ export function ShortcutBar(): React.JSX.Element {
   const [editingShortcut, setEditingShortcut] = useState<Shortcut | undefined>()
   const [activeId, setActiveId] = useState<string | null>(null)
 
-  const sorted = [...shortcuts].sort((a, b) => a.order - b.order)
-  const sortedIds = sorted.map((s) => s.id)
+  const sorted = useMemo(() => [...shortcuts].sort((a, b) => a.order - b.order), [shortcuts])
+  const sortedIds = useMemo(() => sorted.map((s) => s.id), [sorted])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 

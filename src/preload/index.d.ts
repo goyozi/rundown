@@ -1,5 +1,12 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import type { Task, TaskGroup, Comment, AppSettings, WorktreeRecord, Shortcut } from '../shared/types'
+import type {
+  Task,
+  TaskGroup,
+  Comment,
+  AppSettings,
+  WorktreeRecord,
+  Shortcut
+} from '../shared/types'
 
 interface RundownAPI {
   getTasks(): Promise<Task[]>

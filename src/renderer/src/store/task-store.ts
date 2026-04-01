@@ -50,14 +50,15 @@ export const useTaskStore = create<FullStore>((...a) => {
     loadTasks: async () => {
       try {
         set({ loadError: null })
-        const [tasks, groups, activeGroupId, rootTaskOrder, settings, shortcuts] = await Promise.all([
-          window.api.getTasks(),
-          window.api.getGroups(),
-          window.api.getActiveGroupId(),
-          window.api.getRootTaskOrder(),
-          window.api.getSettings(),
-          window.api.getShortcuts()
-        ])
+        const [tasks, groups, activeGroupId, rootTaskOrder, settings, shortcuts] =
+          await Promise.all([
+            window.api.getTasks(),
+            window.api.getGroups(),
+            window.api.getActiveGroupId(),
+            window.api.getRootTaskOrder(),
+            window.api.getSettings(),
+            window.api.getShortcuts()
+          ])
         set({ tasks, groups, activeGroupId, rootTaskOrder, settings, shortcuts, loaded: true })
         initThemeFromSettings(settings.theme)
       } catch (err) {

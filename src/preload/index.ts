@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { Task, TaskGroup, Comment, AppSettings, WorktreeRecord, Shortcut } from '../shared/types'
+import type {
+  Task,
+  TaskGroup,
+  Comment,
+  AppSettings,
+  WorktreeRecord,
+  Shortcut
+} from '../shared/types'
 import { IPC } from '../shared/channels'
 
 const api = {

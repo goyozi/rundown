@@ -29,10 +29,7 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
   const searchableList = useMemo(() => buildSearchableList(tasks, groups), [tasks, groups])
   const results = useMemo(() => searchTasks(query, searchableList), [query, searchableList])
 
-  const shortcutResults = useMemo(
-    () => searchShortcuts(query, shortcuts),
-    [query, shortcuts]
-  )
+  const shortcutResults = useMemo(() => searchShortcuts(query, shortcuts), [query, shortcuts])
   const totalResults = results.length + shortcutResults.length
 
   // Focus input on mount
@@ -198,9 +195,7 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
                           matchedIndices={result.matchedIndices}
                         />
                       </span>
-                      <span className="text-xs text-muted-foreground/60 shrink-0">
-                        Run
-                      </span>
+                      <span className="text-xs text-muted-foreground/60 shrink-0">Run</span>
                     </div>
                   )
                 })}

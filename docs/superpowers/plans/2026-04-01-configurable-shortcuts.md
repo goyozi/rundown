@@ -13,6 +13,7 @@
 ## File Structure
 
 ### New Files
+
 - `src/renderer/src/store/slices/shortcut-slice.ts` — Zustand slice for shortcut CRUD + reorder
 - `src/renderer/src/components/ShortcutBar.tsx` — title bar shortcuts area (+ button, icon buttons, dnd)
 - `src/renderer/src/components/ShortcutDialog.tsx` — add/edit dialog with icon picker
@@ -21,6 +22,7 @@
 - `src/renderer/src/lib/execute-shortcut.ts` — execution logic (resolve target, auto-start, write to pty)
 
 ### Modified Files
+
 - `src/shared/types.ts` — add `Shortcut` type
 - `src/shared/channels.ts` — add `STORE_GET_SHORTCUTS` / `STORE_SAVE_SHORTCUTS` channels
 - `src/main/validation.ts` — add `ShortcutSchema` / `ShortcutsArraySchema`
@@ -37,6 +39,7 @@
 ### Task 1: Shared Types + IPC Channels
 
 **Files:**
+
 - Modify: `src/shared/types.ts:51` (append after Comment type)
 - Modify: `src/shared/channels.ts:10` (add after root task order channels)
 
@@ -76,6 +79,7 @@ git commit -m "feat(shortcuts): add Shortcut type and IPC channels"
 ### Task 2: Validation + Main Process Store
 
 **Files:**
+
 - Modify: `src/main/validation.ts:57` (append after CommentsPoolSchema)
 - Modify: `src/main/store.ts:30-41` (StoreSchema), `src/main/store.ts:46-66` (defaults), `src/main/store.ts:129-288` (handlers)
 
@@ -100,10 +104,13 @@ export const ShortcutsArraySchema = z.array(ShortcutSchema)
 In `src/main/store.ts`, add the import for `Shortcut`:
 
 Change the import line from:
+
 ```ts
 import type { Task, TaskGroup, Comment, AppSettings } from '../shared/types'
 ```
+
 to:
+
 ```ts
 import type { Task, TaskGroup, Comment, AppSettings, Shortcut } from '../shared/types'
 ```
@@ -111,6 +118,7 @@ import type { Task, TaskGroup, Comment, AppSettings, Shortcut } from '../shared/
 Add the import for `ShortcutsArraySchema`:
 
 Change the validation import to also include `ShortcutsArraySchema`:
+
 ```ts
 import {
   TasksArraySchema,
@@ -127,6 +135,7 @@ import {
 ```
 
 Add `shortcuts: Shortcut[]` to the `StoreSchema` interface (after `rootTaskOrder`):
+
 ```ts
 interface StoreSchema {
   tasks: Task[]
@@ -144,6 +153,7 @@ interface StoreSchema {
 ```
 
 Add `shortcuts: []` to the defaults in `storeOptions` (after `rootTaskOrder: {}`):
+
 ```ts
     shortcuts: [],
 ```
@@ -153,13 +163,13 @@ Add `shortcuts: []` to the defaults in `storeOptions` (after `rootTaskOrder: {}`
 In `src/main/store.ts`, inside `registerStoreHandlers()`, add after the `STORE_SAVE_ROOT_TASK_ORDER` handler (after line 168):
 
 ```ts
-  safeHandle(IPC.STORE_GET_SHORTCUTS, (): Shortcut[] => {
-    return store.get('shortcuts')
-  })
+safeHandle(IPC.STORE_GET_SHORTCUTS, (): Shortcut[] => {
+  return store.get('shortcuts')
+})
 
-  safeHandle(IPC.STORE_SAVE_SHORTCUTS, (_event, shortcuts: unknown): void => {
-    store.set('shortcuts', ShortcutsArraySchema.parse(shortcuts) as Shortcut[])
-  })
+safeHandle(IPC.STORE_SAVE_SHORTCUTS, (_event, shortcuts: unknown): void => {
+  store.set('shortcuts', ShortcutsArraySchema.parse(shortcuts) as Shortcut[])
+})
 ```
 
 - [ ] **Step 4: Commit**
@@ -174,6 +184,7 @@ git commit -m "feat(shortcuts): add validation schemas and store handlers"
 ### Task 3: Preload API
 
 **Files:**
+
 - Modify: `src/preload/index.ts:17` (after saveRootTaskOrder)
 - Modify: `src/preload/index.d.ts:2` (import), `src/preload/index.d.ts:14` (after saveRootTaskOrder)
 
@@ -182,15 +193,26 @@ git commit -m "feat(shortcuts): add validation schemas and store handlers"
 In `src/preload/index.ts`, add the `Shortcut` import:
 
 Change line 3 from:
+
 ```ts
 import type { Task, TaskGroup, Comment, AppSettings, WorktreeRecord } from '../shared/types'
 ```
+
 to:
+
 ```ts
-import type { Task, TaskGroup, Comment, AppSettings, WorktreeRecord, Shortcut } from '../shared/types'
+import type {
+  Task,
+  TaskGroup,
+  Comment,
+  AppSettings,
+  WorktreeRecord,
+  Shortcut
+} from '../shared/types'
 ```
 
 Add after `saveRootTaskOrder` (after line 17):
+
 ```ts
   getShortcuts: () => ipcRenderer.invoke(IPC.STORE_GET_SHORTCUTS),
   saveShortcuts: (shortcuts: Shortcut[]) => ipcRenderer.invoke(IPC.STORE_SAVE_SHORTCUTS, shortcuts),
@@ -201,15 +223,26 @@ Add after `saveRootTaskOrder` (after line 17):
 In `src/preload/index.d.ts`, add the `Shortcut` import:
 
 Change line 2 from:
+
 ```ts
 import type { Task, TaskGroup, Comment, AppSettings, WorktreeRecord } from '../shared/types'
 ```
+
 to:
+
 ```ts
-import type { Task, TaskGroup, Comment, AppSettings, WorktreeRecord, Shortcut } from '../shared/types'
+import type {
+  Task,
+  TaskGroup,
+  Comment,
+  AppSettings,
+  WorktreeRecord,
+  Shortcut
+} from '../shared/types'
 ```
 
 Add after `saveRootTaskOrder` (after line 14):
+
 ```ts
   getShortcuts(): Promise<Shortcut[]>
   saveShortcuts(shortcuts: Shortcut[]): Promise<void>
@@ -227,6 +260,7 @@ git commit -m "feat(shortcuts): expose shortcuts IPC in preload API"
 ### Task 4: Zustand ShortcutSlice
 
 **Files:**
+
 - Create: `src/renderer/src/store/slices/shortcut-slice.ts`
 - Modify: `src/renderer/src/store/task-store.ts`
 
@@ -296,16 +330,19 @@ export const createShortcutSlice: StateCreator<FullStore, [], [], ShortcutSlice>
 In `src/renderer/src/store/task-store.ts`:
 
 Add import (after the settings-slice import on line 13):
+
 ```ts
 import { createShortcutSlice, type ShortcutSlice } from './slices/shortcut-slice'
 ```
 
 Update the `PersistenceSlice` interface to add `persistShortcuts` (after `persistRootTaskOrder` on line 22):
+
 ```ts
   persistShortcuts: () => void
 ```
 
 Update `FullStore` type to include `ShortcutSlice` (add after `SettingsSlice &`):
+
 ```ts
 export type FullStore = TaskSlice &
   GroupSlice &
@@ -320,19 +357,21 @@ export type FullStore = TaskSlice &
 Add `...createShortcutSlice(...a),` in the store creation (after `...createSettingsSlice(...a),` on line 42).
 
 Add shortcuts to `loadTasks` — update the `Promise.all` call (line 49) to also load shortcuts:
+
 ```ts
-        const [tasks, groups, activeGroupId, rootTaskOrder, settings, shortcuts] = await Promise.all([
-          window.api.getTasks(),
-          window.api.getGroups(),
-          window.api.getActiveGroupId(),
-          window.api.getRootTaskOrder(),
-          window.api.getSettings(),
-          window.api.getShortcuts()
-        ])
-        set({ tasks, groups, activeGroupId, rootTaskOrder, settings, shortcuts, loaded: true })
+const [tasks, groups, activeGroupId, rootTaskOrder, settings, shortcuts] = await Promise.all([
+  window.api.getTasks(),
+  window.api.getGroups(),
+  window.api.getActiveGroupId(),
+  window.api.getRootTaskOrder(),
+  window.api.getSettings(),
+  window.api.getShortcuts()
+])
+set({ tasks, groups, activeGroupId, rootTaskOrder, settings, shortcuts, loaded: true })
 ```
 
 Add `persistShortcuts` debounced function (after `persistRootTaskOrder` around line 95):
+
 ```ts
     persistShortcuts: debouncedLeadingTrailing(async () => {
       try {
@@ -358,6 +397,7 @@ git commit -m "feat(shortcuts): add ShortcutSlice and wire into store"
 ### Task 5: Curated Icon List + Search Helper
 
 **Files:**
+
 - Create: `src/renderer/src/lib/shortcut-icons.ts`
 
 - [ ] **Step 1: Create the icon helper module**
@@ -417,6 +457,7 @@ git commit -m "feat(shortcuts): add curated icon list and search helper"
 ### Task 6: Icon Picker Component
 
 **Files:**
+
 - Create: `src/renderer/src/components/IconPicker.tsx`
 
 - [ ] **Step 1: Create the IconPicker component**
@@ -489,6 +530,7 @@ git commit -m "feat(shortcuts): add searchable IconPicker component"
 ### Task 7: Add/Edit Shortcut Dialog
 
 **Files:**
+
 - Create: `src/renderer/src/components/ShortcutDialog.tsx`
 
 - [ ] **Step 1: Create the ShortcutDialog component**
@@ -583,7 +625,9 @@ export function ShortcutDialog({
             <Input
               value={command}
               onChange={(e) => setCommand(e.target.value)}
-              placeholder={type === 'shell' ? 'e.g. git pull' : 'e.g. create a PR for the current branch'}
+              placeholder={
+                type === 'shell' ? 'e.g. git pull' : 'e.g. create a PR for the current branch'
+              }
               className="h-8 text-xs font-mono"
             />
           </div>
@@ -622,6 +666,7 @@ git commit -m "feat(shortcuts): add ShortcutDialog for add/edit"
 ### Task 8: Shortcut Execution Logic
 
 **Files:**
+
 - Create: `src/renderer/src/lib/execute-shortcut.ts`
 
 - [ ] **Step 1: Create the execution module**
@@ -723,6 +768,7 @@ git commit -m "feat(shortcuts): add shortcut execution logic"
 ### Task 9: ShortcutBar Component (Title Bar Integration)
 
 **Files:**
+
 - Create: `src/renderer/src/components/ShortcutBar.tsx`
 - Modify: `src/renderer/src/components/TitleBar.tsx`
 
@@ -743,11 +789,7 @@ import {
   closestCenter
 } from '@dnd-kit/core'
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
-import {
-  SortableContext,
-  useSortable,
-  horizontalListSortingStrategy
-} from '@dnd-kit/sortable'
+import { SortableContext, useSortable, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
   ContextMenu,
@@ -755,12 +797,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTaskStore } from '@/store/task-store'
 import { useShallow } from 'zustand/react/shallow'
 import { ShortcutDialog } from './ShortcutDialog'
@@ -811,10 +848,7 @@ function SortableShortcutButton({
       </ContextMenuTrigger>
       <ContextMenuContent className="w-36">
         <ContextMenuItem onClick={() => onEdit(shortcut)}>Edit</ContextMenuItem>
-        <ContextMenuItem
-          className="text-destructive"
-          onClick={() => onDelete(shortcut.id)}
-        >
+        <ContextMenuItem className="text-destructive" onClick={() => onDelete(shortcut.id)}>
           Delete
         </ContextMenuItem>
       </ContextMenuContent>
@@ -884,9 +918,7 @@ export function ShortcutBar(): React.JSX.Element {
   )
 
   const activeShortcut = activeId ? sorted.find((s) => s.id === activeId) : null
-  const ActiveIcon = activeShortcut
-    ? icons[activeShortcut.icon as keyof typeof icons]
-    : null
+  const ActiveIcon = activeShortcut ? icons[activeShortcut.icon as keyof typeof icons] : null
 
   const hasShortcuts = sorted.length > 0
 
@@ -1010,6 +1042,7 @@ git commit -m "feat(shortcuts): add ShortcutBar with dnd reorder and title bar i
 ### Task 10: Command Palette Integration
 
 **Files:**
+
 - Modify: `src/renderer/src/lib/task-search.ts`
 - Modify: `src/renderer/src/components/GoToTask.tsx`
 
@@ -1098,6 +1131,7 @@ export function searchShortcuts(
 In `src/renderer/src/components/GoToTask.tsx`:
 
 Update imports (line 4-5) to add:
+
 ```ts
 import { buildSearchableList, searchTasks, searchShortcuts } from '@/lib/task-search'
 import type { ShortcutSearchResult } from '@/lib/task-search'
@@ -1107,134 +1141,139 @@ import { executeShortcut } from '@/lib/execute-shortcut'
 ```
 
 In the store selector (lines 17-25), add `shortcuts`:
+
 ```ts
-  const { tasks, groups, activeGroupId, setActiveGroup, selectTask, shortcuts } = useTaskStore(
-    useShallow((s) => ({
-      tasks: s.tasks,
-      groups: s.groups,
-      activeGroupId: s.activeGroupId,
-      setActiveGroup: s.setActiveGroup,
-      selectTask: s.selectTask,
-      shortcuts: s.shortcuts
-    }))
-  )
+const { tasks, groups, activeGroupId, setActiveGroup, selectTask, shortcuts } = useTaskStore(
+  useShallow((s) => ({
+    tasks: s.tasks,
+    groups: s.groups,
+    activeGroupId: s.activeGroupId,
+    setActiveGroup: s.setActiveGroup,
+    selectTask: s.selectTask,
+    shortcuts: s.shortcuts
+  }))
+)
 ```
 
 After the `results` memo (line 28), add a shortcut results memo:
+
 ```ts
-  const shortcutResults = useMemo(
-    () => searchShortcuts(query, shortcuts),
-    [query, shortcuts]
-  )
-  const totalResults = results.length + shortcutResults.length
+const shortcutResults = useMemo(() => searchShortcuts(query, shortcuts), [query, shortcuts])
+const totalResults = results.length + shortcutResults.length
 ```
 
 Update `handleKeyDown` to handle the combined list. Replace the `handleKeyDown` callback with:
 
 ```ts
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setHighlightIndex((i) => Math.min(i + 1, totalResults - 1))
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setHighlightIndex((i) => Math.max(i - 1, 0))
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        if (highlightIndex < results.length) {
-          const result = results[highlightIndex]
-          if (result) navigateToTask(result.task.id, result.task.groupId)
-        } else {
-          const scResult = shortcutResults[highlightIndex - results.length]
-          if (scResult) {
-            executeShortcut(scResult.shortcut)
-            onClose()
-          }
+const handleKeyDown = useCallback(
+  (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlightIndex((i) => Math.min(i + 1, totalResults - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlightIndex((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (highlightIndex < results.length) {
+        const result = results[highlightIndex]
+        if (result) navigateToTask(result.task.id, result.task.groupId)
+      } else {
+        const scResult = shortcutResults[highlightIndex - results.length]
+        if (scResult) {
+          executeShortcut(scResult.shortcut)
+          onClose()
         }
-      } else if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
       }
-    },
-    [results, shortcutResults, totalResults, highlightIndex, navigateToTask, onClose]
-  )
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      onClose()
+    }
+  },
+  [results, shortcutResults, totalResults, highlightIndex, navigateToTask, onClose]
+)
 ```
 
 In the JSX results section, after the task results `map` block (after line 150) and before the footer, add shortcut results:
 
 ```tsx
-            {/* Shortcut results */}
-            {shortcutResults.length > 0 && (
-              <>
-                {results.length > 0 && (
-                  <div className="px-3 py-1 text-[11px] text-muted-foreground/50 uppercase tracking-wider">
-                    Shortcuts
-                  </div>
-                )}
-                {shortcutResults.map((result, index) => {
-                  const globalIndex = results.length + index
-                  const IconComponent = icons[result.shortcut.icon as keyof typeof icons]
-                  return (
-                    <div
-                      key={result.shortcut.id}
-                      role="option"
-                      aria-selected={globalIndex === highlightIndex}
-                      className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer text-sm ${
-                        globalIndex === highlightIndex ? 'bg-accent' : 'hover:bg-accent/50'
-                      }`}
-                      onClick={() => {
-                        executeShortcut(result.shortcut)
-                        onClose()
-                      }}
-                      onMouseEnter={() => setHighlightIndex(globalIndex)}
-                      data-testid="go-to-task-shortcut-result"
-                    >
-                      {IconComponent ? (
-                        <IconComponent className="size-3.5 text-muted-foreground shrink-0" />
-                      ) : (
-                        <Circle className="size-3.5 text-muted-foreground shrink-0" />
-                      )}
-                      <span className="flex-1 truncate text-muted-foreground">
-                        <HighlightedBreadcrumb
-                          text={result.shortcut.name}
-                          matchedIndices={result.matchedIndices}
-                        />
-                      </span>
-                      <span className="text-xs text-muted-foreground/60 shrink-0">
-                        Run
-                      </span>
-                    </div>
-                  )
-                })}
-              </>
+{
+  /* Shortcut results */
+}
+{
+  shortcutResults.length > 0 && (
+    <>
+      {results.length > 0 && (
+        <div className="px-3 py-1 text-[11px] text-muted-foreground/50 uppercase tracking-wider">
+          Shortcuts
+        </div>
+      )}
+      {shortcutResults.map((result, index) => {
+        const globalIndex = results.length + index
+        const IconComponent = icons[result.shortcut.icon as keyof typeof icons]
+        return (
+          <div
+            key={result.shortcut.id}
+            role="option"
+            aria-selected={globalIndex === highlightIndex}
+            className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer text-sm ${
+              globalIndex === highlightIndex ? 'bg-accent' : 'hover:bg-accent/50'
+            }`}
+            onClick={() => {
+              executeShortcut(result.shortcut)
+              onClose()
+            }}
+            onMouseEnter={() => setHighlightIndex(globalIndex)}
+            data-testid="go-to-task-shortcut-result"
+          >
+            {IconComponent ? (
+              <IconComponent className="size-3.5 text-muted-foreground shrink-0" />
+            ) : (
+              <Circle className="size-3.5 text-muted-foreground shrink-0" />
             )}
+            <span className="flex-1 truncate text-muted-foreground">
+              <HighlightedBreadcrumb
+                text={result.shortcut.name}
+                matchedIndices={result.matchedIndices}
+              />
+            </span>
+            <span className="text-xs text-muted-foreground/60 shrink-0">Run</span>
+          </div>
+        )
+      })}
+    </>
+  )
+}
 ```
 
 Update the "No matching tasks" empty state (line 113-116) to also check shortcuts:
+
 ```tsx
-            {results.length === 0 && shortcutResults.length === 0 && query.trim() && (
-              <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                No matching tasks or shortcuts
-              </div>
-            )}
+{
+  results.length === 0 && shortcutResults.length === 0 && query.trim() && (
+    <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+      No matching tasks or shortcuts
+    </div>
+  )
+}
 ```
 
 Update the placeholder text in the search input (line 105) from `"Go to Task…"` to `"Go to... / Run..."`.
 
 Update the footer (lines 154-164) to include "run shortcut":
+
 ```tsx
-          <div className="flex items-center gap-4 px-3 py-1.5 border-t border-border text-[11px] text-muted-foreground/60">
-            <span>
-              <kbd className="bg-muted px-1 py-0.5 rounded text-[10px]">↑↓</kbd> navigate
-            </span>
-            <span>
-              <kbd className="bg-muted px-1 py-0.5 rounded text-[10px]">Enter</kbd> go / run
-            </span>
-            <span>
-              <kbd className="bg-muted px-1 py-0.5 rounded text-[10px]">Esc</kbd> close
-            </span>
-          </div>
+<div className="flex items-center gap-4 px-3 py-1.5 border-t border-border text-[11px] text-muted-foreground/60">
+  <span>
+    <kbd className="bg-muted px-1 py-0.5 rounded text-[10px]">↑↓</kbd> navigate
+  </span>
+  <span>
+    <kbd className="bg-muted px-1 py-0.5 rounded text-[10px]">Enter</kbd> go / run
+  </span>
+  <span>
+    <kbd className="bg-muted px-1 py-0.5 rounded text-[10px]">Esc</kbd> close
+  </span>
+</div>
 ```
 
 - [ ] **Step 3: Commit**
@@ -1269,6 +1308,7 @@ Address any lint or type errors from steps 1-2.
 Run: `pnpm dev`
 
 Manually verify:
+
 - Title bar shows "+ Add shortcut" button on the right (when no shortcuts exist)
 - Clicking it opens the Add Shortcut dialog
 - Can create a shell shortcut (e.g. "Git Status" with `git status`, terminal icon)

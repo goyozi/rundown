@@ -55,7 +55,7 @@ async function executeClaude(
   }
 
   state.setActiveTab(taskId, 'claude')
-  await window.api.ptyWrite(taskId, command + '\n')
+  await window.api.ptyWrite(taskId, command + '\r')
 }
 
 async function executeShell(
@@ -83,7 +83,7 @@ async function executeShell(
     state.setActiveTab(taskId, `shell:${tab.id}`)
   }
 
-  await window.api.ptyWrite(sessionId, command + '\n')
+  await window.api.ptyWrite(sessionId, command + '\r')
 }
 
 function delay(ms: number): Promise<void> {

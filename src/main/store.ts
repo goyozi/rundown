@@ -50,8 +50,8 @@ const storeOptions: ConstructorParameters<typeof Store<StoreSchema>>[0] = {
     groups: [{ id: DEFAULT_GROUP_ID, name: 'Rundown', createdAt: new Date().toISOString() }],
     activeGroupId: DEFAULT_GROUP_ID,
     windowState: {
-      width: 900,
-      height: 670,
+      width: 1200,
+      height: 800,
       isMaximized: false
     },
     sidebarWidth: 320,

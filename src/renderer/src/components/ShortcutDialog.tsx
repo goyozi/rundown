@@ -34,9 +34,9 @@ function ShortcutForm({
   }
 
   return (
-    <div className="space-y-5 py-2">
+    <div className="space-y-3">
       {/* Name */}
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         <label className="text-xs text-muted-foreground">Name</label>
         <Input
           value={name}
@@ -48,7 +48,7 @@ function ShortcutForm({
       </div>
 
       {/* Type toggle */}
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         <label className="text-xs text-muted-foreground">Type</label>
         <div className="flex items-center gap-1 rounded-md border p-0.5">
           {(['shell', 'claude'] as const).map((t) => (
@@ -70,7 +70,7 @@ function ShortcutForm({
       </div>
 
       {/* Command */}
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         <label className="text-xs text-muted-foreground">Command</label>
         <Input
           value={command}
@@ -84,7 +84,7 @@ function ShortcutForm({
       </div>
 
       {/* Icon */}
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         <label className="text-xs text-muted-foreground">Icon</label>
         <IconPicker value={icon} onChange={setIcon} />
       </div>

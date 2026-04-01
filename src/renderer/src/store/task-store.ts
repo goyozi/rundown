@@ -11,6 +11,7 @@ import {
   type OperationRequestSlice
 } from './slices/operation-request-slice'
 import { createSettingsSlice, type SettingsSlice } from './slices/settings-slice'
+import { createShortcutSlice, type ShortcutSlice } from './slices/shortcut-slice'
 
 export type { Task, TaskGroup }
 
@@ -20,6 +21,7 @@ interface PersistenceSlice {
   persist: () => void
   persistGroups: () => void
   persistRootTaskOrder: () => void
+  persistShortcuts: () => void
 }
 
 export type FullStore = TaskSlice &
@@ -28,6 +30,7 @@ export type FullStore = TaskSlice &
   ShellTabSlice &
   OperationRequestSlice &
   SettingsSlice &
+  ShortcutSlice &
   PersistenceSlice
 
 export const useTaskStore = create<FullStore>((...a) => {
@@ -40,20 +43,22 @@ export const useTaskStore = create<FullStore>((...a) => {
     ...createShellTabSlice(...a),
     ...createOperationRequestSlice(...a),
     ...createSettingsSlice(...a),
+    ...createShortcutSlice(...a),
 
     loadError: null,
 
     loadTasks: async () => {
       try {
         set({ loadError: null })
-        const [tasks, groups, activeGroupId, rootTaskOrder, settings] = await Promise.all([
+        const [tasks, groups, activeGroupId, rootTaskOrder, settings, shortcuts] = await Promise.all([
           window.api.getTasks(),
           window.api.getGroups(),
           window.api.getActiveGroupId(),
           window.api.getRootTaskOrder(),
-          window.api.getSettings()
+          window.api.getSettings(),
+          window.api.getShortcuts()
         ])
-        set({ tasks, groups, activeGroupId, rootTaskOrder, settings, loaded: true })
+        set({ tasks, groups, activeGroupId, rootTaskOrder, settings, shortcuts, loaded: true })
         initThemeFromSettings(settings.theme)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
@@ -89,6 +94,17 @@ export const useTaskStore = create<FullStore>((...a) => {
       } catch (err) {
         window.api.logError(
           'Failed to persist root task order',
+          err instanceof Error ? err.stack : String(err)
+        )
+      }
+    }),
+
+    persistShortcuts: debouncedLeadingTrailing(async () => {
+      try {
+        await window.api.saveShortcuts(get().shortcuts)
+      } catch (err) {
+        window.api.logError(
+          'Failed to persist shortcuts',
           err instanceof Error ? err.stack : String(err)
         )
       }

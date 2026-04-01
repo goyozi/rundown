@@ -28,7 +28,7 @@ export async function addShortcut(page: Page, opts: ShortcutOptions): Promise<vo
 
   // Pick icon (curated icons are visible by default)
   await page
-    .getByTestId(`shortcut-icon-option-${icon ?? 'terminal'}`)
+    .getByTestId(`shortcut-icon-option-${icon ?? 'Terminal'}`)
     .first()
     .click()
 

@@ -2,26 +2,26 @@ import { icons } from 'lucide-react'
 
 /** Curated icons shown when no search query is entered */
 export const CURATED_ICON_NAMES: string[] = [
-  'git-branch',
-  'git-pull-request',
-  'git-merge',
-  'git-commit-horizontal',
-  'play',
-  'square-terminal',
-  'terminal',
-  'upload',
-  'download',
-  'refresh-cw',
-  'rocket',
-  'wrench',
-  'settings',
-  'shield',
-  'zap',
-  'send',
-  'package',
-  'bug',
-  'test-tubes',
-  'code'
+  'GitBranch',
+  'GitPullRequest',
+  'GitMerge',
+  'GitCommitHorizontal',
+  'Play',
+  'SquareTerminal',
+  'Terminal',
+  'Upload',
+  'Download',
+  'RefreshCw',
+  'Rocket',
+  'Wrench',
+  'Settings',
+  'Shield',
+  'Zap',
+  'Send',
+  'Package',
+  'Bug',
+  'TestTubes',
+  'Code'
 ]
 
 const allIconNames = Object.keys(icons)

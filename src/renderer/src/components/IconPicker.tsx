@@ -59,7 +59,7 @@ export function IconPicker({ value, onChange }: IconPickerProps): React.JSX.Elem
         )}
       </div>
       <div className="h-4 text-[11px] text-muted-foreground/60 truncate">
-        {hoveredIcon ?? value}
+        {(hoveredIcon ?? value) || '\u00A0'}
       </div>
     </div>
   )

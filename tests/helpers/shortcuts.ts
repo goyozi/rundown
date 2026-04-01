@@ -26,11 +26,11 @@ export async function addShortcut(page: Page, opts: ShortcutOptions): Promise<vo
   // Fill in the command
   await page.getByTestId('shortcut-command-input').fill(command)
 
-  // Pick icon if specified
-  if (icon) {
-    await page.getByPlaceholder('Search icons...').fill(icon)
-    await page.getByTestId(`shortcut-icon-option-${icon}`).first().click()
-  }
+  // Pick icon (curated icons are visible by default)
+  await page
+    .getByTestId(`shortcut-icon-option-${icon ?? 'terminal'}`)
+    .first()
+    .click()
 
   // Save
   await page.getByTestId('shortcut-save-button').click()

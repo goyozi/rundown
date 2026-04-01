@@ -24,9 +24,9 @@ function ShortcutForm({
   const [name, setName] = useState(initial?.name ?? '')
   const [type, setType] = useState<'shell' | 'claude'>(initial?.type ?? 'shell')
   const [command, setCommand] = useState(initial?.command ?? '')
-  const [icon, setIcon] = useState(initial?.icon ?? 'terminal')
+  const [icon, setIcon] = useState(initial?.icon ?? '')
 
-  const canSave = name.trim() !== '' && command.trim() !== ''
+  const canSave = name.trim() !== '' && command.trim() !== '' && icon !== ''
 
   const handleSave = (): void => {
     if (!canSave) return

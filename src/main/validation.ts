@@ -56,6 +56,16 @@ export const CommentSchema = z.object({
 })
 export const CommentsPoolSchema = z.record(z.string(), z.array(CommentSchema))
 
+export const ShortcutSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  icon: z.string(),
+  type: z.enum(['shell', 'claude']),
+  command: z.string(),
+  order: z.number()
+})
+export const ShortcutsArraySchema = z.array(ShortcutSchema)
+
 // Session report (HTTP endpoint payload)
 export const SessionReportSchema = z.object({
   taskId: z.string().min(1),

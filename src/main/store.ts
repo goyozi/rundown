@@ -3,7 +3,7 @@ import Store from 'electron-store'
 import { runMigrations, type StoreAccess } from './migrations'
 import { existsSync } from 'fs'
 import { isAbsolute } from 'path'
-import type { Task, TaskGroup, Comment, AppSettings } from '../shared/types'
+import type { Task, TaskGroup, Comment, AppSettings, Shortcut } from '../shared/types'
 import {
   TasksArraySchema,
   GroupsArraySchema,
@@ -13,7 +13,8 @@ import {
   DirPathSchema,
   BranchNameSchema,
   CommentsPoolSchema,
-  AppSettingsSchema
+  AppSettingsSchema,
+  ShortcutsArraySchema
 } from './validation'
 import { IPC } from '../shared/channels'
 import { safeHandle } from './ipc-utils'
@@ -36,6 +37,7 @@ interface StoreSchema {
   rootTaskOrder: Record<string, string[]>
   comments: Record<string, Comment[]>
   settings: AppSettings
+  shortcuts: Shortcut[]
   serverPort: number
   schemaVersion: number
 }
@@ -55,6 +57,7 @@ const storeOptions: ConstructorParameters<typeof Store<StoreSchema>>[0] = {
     sidebarWidth: 320,
     rootTaskOrder: {},
     comments: {},
+    shortcuts: [],
     settings: {
       theme: 'system',
       defaultWorktreeMode: 'no-worktree' as const,
@@ -165,6 +168,14 @@ export function registerStoreHandlers(): void {
 
   safeHandle(IPC.STORE_SAVE_ROOT_TASK_ORDER, (_event, order: unknown): void => {
     store.set('rootTaskOrder', RootTaskOrderSchema.parse(order))
+  })
+
+  safeHandle(IPC.STORE_GET_SHORTCUTS, (): Shortcut[] => {
+    return store.get('shortcuts')
+  })
+
+  safeHandle(IPC.STORE_SAVE_SHORTCUTS, (_event, shortcuts: unknown): void => {
+    store.set('shortcuts', ShortcutsArraySchema.parse(shortcuts) as Shortcut[])
   })
 
   safeHandle(IPC.DIALOG_OPEN_DIRECTORY, async (event): Promise<string | undefined> => {

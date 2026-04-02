@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, nativeTheme, session, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, nativeTheme, session, dialog, Menu } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -209,14 +209,68 @@ app.whenReady().then(async () => {
 
   createWindow()
 
-  // Check for updates after window is created (production only)
+  // Auto-update (production only)
   if (!is.dev) {
     electronUpdater.autoUpdater.on('error', (err) => {
       log.error('Auto-updater error:', err)
     })
-    electronUpdater.autoUpdater.checkForUpdatesAndNotify().catch((err) => {
-      log.error('Auto-updater check failed:', err)
-    })
+
+    let lastCheckTime = 0
+    const UPDATE_INTERVAL_MS = 60 * 60 * 1000 // 1 hour
+
+    function checkForUpdates(): void {
+      const now = Date.now()
+      if (now - lastCheckTime < UPDATE_INTERVAL_MS) return
+      lastCheckTime = now
+      electronUpdater.autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+        log.error('Auto-updater check failed:', err)
+      })
+    }
+
+    // Initial check
+    checkForUpdates()
+
+    // Periodic check — the guard inside checkForUpdates() prevents hammering
+    // after wake from sleep (setInterval can fire immediately on wake for
+    // every "missed" tick on some platforms)
+    setInterval(checkForUpdates, UPDATE_INTERVAL_MS)
+  }
+
+  // macOS application menu
+  if (process.platform === 'darwin') {
+    const template: Electron.MenuItemConstructorOptions[] = [
+      {
+        label: app.name,
+        submenu: [
+          { role: 'about' },
+          { type: 'separator' },
+          ...(is.dev
+            ? []
+            : [
+                {
+                  label: 'Check for Updates…',
+                  click: (): void => {
+                    electronUpdater.autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+                      log.error('Manual update check failed:', err)
+                    })
+                  }
+                } as Electron.MenuItemConstructorOptions,
+                { type: 'separator' as const }
+              ]),
+          { role: 'services' as const },
+          { type: 'separator' as const },
+          { role: 'hide' as const },
+          { role: 'hideOthers' as const },
+          { role: 'unhide' as const },
+          { type: 'separator' as const },
+          { role: 'quit' as const }
+        ]
+      },
+      { role: 'editMenu' },
+      { role: 'viewMenu' },
+      { role: 'windowMenu' }
+    ]
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   }
 
   app.on('activate', function () {

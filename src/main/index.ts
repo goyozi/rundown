@@ -100,7 +100,9 @@ function createWindow(): void {
   })
 
   win.on('ready-to-show', () => {
-    win.show()
+    if (process.env.RUNDOWN_HEADLESS !== '1') {
+      win.show()
+    }
   })
 
   win.webContents.setWindowOpenHandler((details) => {

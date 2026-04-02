@@ -23,6 +23,8 @@
     "build:linux": "pnpm run build && electron-builder --linux",
     "test": "electron-vite build && playwright test",
     "test:norebuild": "playwright test",
+    "test:headed": "RUNDOWN_HEADLESS=0 electron-vite build && RUNDOWN_HEADLESS=0 playwright test",
+    "test:headed:norebuild": "RUNDOWN_HEADLESS=0 playwright test",
     "test:unit": "vitest run"
   },
   "dependencies": {

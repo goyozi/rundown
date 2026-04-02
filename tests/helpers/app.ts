@@ -16,7 +16,8 @@ export async function launchApp(
       CLAUDE_BIN: path.resolve('tests/fixtures/claude-stub.js'),
       CLAUDE_STUB_SCRIPT: stubScript,
       SHELL_BIN: path.resolve('tests/fixtures/shell-stub.js'),
-      ELECTRON_STORE_PATH: effectiveStorePath
+      ELECTRON_STORE_PATH: effectiveStorePath,
+      RUNDOWN_HEADLESS: process.env.RUNDOWN_HEADLESS ?? '1'
     }
   })
   const page = await app.firstWindow()

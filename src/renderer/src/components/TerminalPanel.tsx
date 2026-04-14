@@ -69,7 +69,12 @@ export function TerminalPanel({
   const handleResize = useCallback(() => {
     const fit = fitAddonRef.current
     const term = terminalRef.current
-    if (fit && term) {
+    const container = containerRef.current
+    if (fit && term && container) {
+      // Skip resize when container is hidden (display:none) — otherwise
+      // fitAddon computes tiny cols from the zero-sized element, the PTY
+      // re-wraps all output at ~2 columns, and the buffer is mangled.
+      if (container.clientWidth === 0 || container.clientHeight === 0) return
       try {
         fit.fit()
         window.api.ptyResize(sessionId, term.cols, term.rows)

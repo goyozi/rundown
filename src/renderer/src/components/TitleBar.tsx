@@ -1,5 +1,6 @@
 import { Search } from 'lucide-react'
 import { ShortcutBar } from './ShortcutBar'
+import { NavButtons } from './NavButtons'
 
 interface TitleBarProps {
   onGoToTask: () => void
@@ -7,7 +8,10 @@ interface TitleBarProps {
 
 export function TitleBar({ onGoToTask }: TitleBarProps): React.JSX.Element {
   return (
-    <div className="h-9 flex items-center justify-center bg-sidebar-bg border-b border-border drag-region shrink-0 pl-[80px]">
+    <div className="h-9 flex items-center justify-center bg-sidebar-bg border-b border-border drag-region shrink-0 pl-[80px] relative">
+      <div className="absolute left-[90px] top-1/2 -translate-y-1/2">
+        <NavButtons />
+      </div>
       <button
         onClick={onGoToTask}
         className="no-drag flex items-center justify-between w-full max-w-[600px] mx-4 px-2.5 py-1 rounded-md bg-background/60 border border-border text-xs cursor-pointer hover:bg-background/80 transition-colors z-10"

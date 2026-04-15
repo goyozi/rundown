@@ -10,6 +10,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { TitleBar } from './components/TitleBar'
 import { GoToTask } from './components/GoToTask'
+import { RecentTaskSwitcher } from './components/RecentTaskSwitcher'
 
 const MIN_SIDEBAR = 220
 const MAX_SIDEBAR = 520
@@ -25,7 +26,9 @@ function App(): React.JSX.Element {
       cleanupExitedShell: s.cleanupExitedShell
     }))
   )
-  usePaneKeyboardNav()
+  const [recentSwitcherOpen, setRecentSwitcherOpen] = useState(false)
+  const openRecentSwitcher = useCallback(() => setRecentSwitcherOpen(true), [])
+  usePaneKeyboardNav({ onOpenRecentSwitcher: openRecentSwitcher, isRecentSwitcherOpen: recentSwitcherOpen })
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR)
   const isDragging = useRef(false)
   const [goToTaskOpen, setGoToTaskOpen] = useState(false)
@@ -113,6 +116,7 @@ function App(): React.JSX.Element {
       <div className="flex flex-col h-screen w-screen bg-background">
         <TitleBar onGoToTask={() => setGoToTaskOpen(true)} />
         {goToTaskOpen && <GoToTask onClose={() => setGoToTaskOpen(false)} />}
+        {recentSwitcherOpen && <RecentTaskSwitcher onClose={() => setRecentSwitcherOpen(false)} />}
         <div className="flex flex-1 min-h-0">
           <aside
             className="flex-shrink-0 h-full bg-sidebar-bg border-r border-sidebar-border relative"

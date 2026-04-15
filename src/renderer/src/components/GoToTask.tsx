@@ -15,13 +15,11 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const { tasks, groups, activeGroupId, setActiveGroup, selectTask, shortcuts } = useTaskStore(
+  const { tasks, groups, navigateToTask, shortcuts } = useTaskStore(
     useShallow((s) => ({
       tasks: s.tasks,
       groups: s.groups,
-      activeGroupId: s.activeGroupId,
-      setActiveGroup: s.setActiveGroup,
-      selectTask: s.selectTask,
+      navigateToTask: s.navigateToTask,
       shortcuts: s.shortcuts
     }))
   )
@@ -45,19 +43,12 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
     item?.scrollIntoView({ block: 'nearest' })
   }, [highlightIndex])
 
-  const navigateToTask = useCallback(
+  const handleNavigateToTask = useCallback(
     (taskId: string, groupId: string) => {
-      if (groupId !== activeGroupId) {
-        setActiveGroup(groupId)
-      }
-      // setActiveGroup clears selectedTaskId, so we always call selectTask after
-      // Use requestAnimationFrame to ensure the group switch has rendered
-      requestAnimationFrame(() => {
-        selectTask(taskId)
-      })
+      navigateToTask(taskId, groupId)
       onClose()
     },
-    [activeGroupId, setActiveGroup, selectTask, onClose]
+    [navigateToTask, onClose]
   )
 
   const handleKeyDown = useCallback(
@@ -72,7 +63,7 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
         e.preventDefault()
         if (highlightIndex < results.length) {
           const result = results[highlightIndex]
-          if (result) navigateToTask(result.task.id, result.task.groupId)
+          if (result) handleNavigateToTask(result.task.id, result.task.groupId)
         } else {
           const scResult = shortcutResults[highlightIndex - results.length]
           if (scResult) {
@@ -85,7 +76,7 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
         onClose()
       }
     },
-    [results, shortcutResults, totalResults, highlightIndex, navigateToTask, onClose]
+    [results, shortcutResults, totalResults, highlightIndex, handleNavigateToTask, onClose]
   )
 
   return (
@@ -134,7 +125,7 @@ export function GoToTask({ onClose }: GoToTaskProps): React.JSX.Element | null {
                 className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer text-sm ${
                   index === highlightIndex ? 'bg-accent' : 'hover:bg-accent/50'
                 }`}
-                onClick={() => navigateToTask(result.task.id, result.task.groupId)}
+                onClick={() => handleNavigateToTask(result.task.id, result.task.groupId)}
                 onMouseEnter={() => setHighlightIndex(index)}
                 data-testid="go-to-task-result"
               >

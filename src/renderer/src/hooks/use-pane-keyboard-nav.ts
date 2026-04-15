@@ -11,7 +11,12 @@ import type { DetailTab } from '@/store/slices/shell-tab-slice'
  * - Cmd+Down / Cmd+J   — select next task (from anywhere)
  * - Cmd+1..9           — switch to the Nth tab in the right pane
  */
-export function usePaneKeyboardNav(): void {
+interface PaneKeyboardNavOptions {
+  onOpenRecentSwitcher: () => void
+  isRecentSwitcherOpen: boolean
+}
+
+export function usePaneKeyboardNav({ onOpenRecentSwitcher, isRecentSwitcherOpen }: PaneKeyboardNavOptions): void {
   useEffect(() => {
     const getVisibleTaskIds = (): string[] => {
       const els = document.querySelectorAll<HTMLElement>('[data-task-id]')
@@ -23,8 +28,34 @@ export function usePaneKeyboardNav(): void {
       if (e.altKey) return
       if (document.querySelector('[role="dialog"]')) return
 
+      // Skip all shortcuts when the recent task switcher is open (it handles its own events)
+      if (isRecentSwitcherOpen) return
+
       const store = useTaskStore.getState()
-      const { selectedTaskId, selectTask } = store
+      const { selectedTaskId, navigateToTask, activeGroupId } = store
+
+      // Cmd+[: go back
+      if (e.key === '[' && !e.shiftKey) {
+        e.preventDefault()
+        store.goBack()
+        return
+      }
+
+      // Cmd+]: go forward
+      if (e.key === ']' && !e.shiftKey) {
+        e.preventDefault()
+        store.goForward()
+        return
+      }
+
+      // Cmd+E: open recent task switcher
+      if (e.key === 'e' && !e.shiftKey) {
+        e.preventDefault()
+        const mruList = store.getMruList()
+        if (mruList.length === 0) return
+        onOpenRecentSwitcher()
+        return
+      }
 
       // Cmd+T: focus task pane
       if (e.key === 't' && !e.shiftKey) {
@@ -40,9 +71,9 @@ export function usePaneKeyboardNav(): void {
         if (ids.length === 0) return
         const idx = selectedTaskId ? ids.indexOf(selectedTaskId) : -1
         if (idx < ids.length - 1) {
-          selectTask(ids[idx + 1])
+          navigateToTask(ids[idx + 1], activeGroupId)
         } else if (idx === -1) {
-          selectTask(ids[0])
+          navigateToTask(ids[0], activeGroupId)
         }
         return
       }
@@ -53,9 +84,9 @@ export function usePaneKeyboardNav(): void {
         if (ids.length === 0) return
         const idx = selectedTaskId ? ids.indexOf(selectedTaskId) : -1
         if (idx > 0) {
-          selectTask(ids[idx - 1])
+          navigateToTask(ids[idx - 1], activeGroupId)
         } else if (idx === -1) {
-          selectTask(ids[ids.length - 1])
+          navigateToTask(ids[ids.length - 1], activeGroupId)
         }
         return
       }
@@ -79,7 +110,7 @@ export function usePaneKeyboardNav(): void {
 
     document.addEventListener('keydown', handler, true)
     return () => document.removeEventListener('keydown', handler, true)
-  }, [])
+  }, [onOpenRecentSwitcher, isRecentSwitcherOpen])
 }
 
 function buildTabList(

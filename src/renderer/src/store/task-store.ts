@@ -12,6 +12,7 @@ import {
 } from './slices/operation-request-slice'
 import { createSettingsSlice, type SettingsSlice } from './slices/settings-slice'
 import { createShortcutSlice, type ShortcutSlice } from './slices/shortcut-slice'
+import { createNavigationSlice, type NavigationSlice } from './slices/navigation-slice'
 
 export type { Task, TaskGroup }
 
@@ -31,6 +32,7 @@ export type FullStore = TaskSlice &
   OperationRequestSlice &
   SettingsSlice &
   ShortcutSlice &
+  NavigationSlice &
   PersistenceSlice
 
 export const useTaskStore = create<FullStore>((...a) => {
@@ -44,6 +46,7 @@ export const useTaskStore = create<FullStore>((...a) => {
     ...createOperationRequestSlice(...a),
     ...createSettingsSlice(...a),
     ...createShortcutSlice(...a),
+    ...createNavigationSlice(...a),
 
     loadError: null,
 

@@ -17,7 +17,7 @@ export function useTaskKeyboardNav(containerRef: RefObject<HTMLDivElement | null
       if (document.querySelector('[role="dialog"]')) return
 
       const store = useTaskStore.getState()
-      const { selectedTaskId, selectTask } = store
+      const { selectedTaskId, selectTask, navigateToTask, activeGroupId } = store
 
       const visibleIds = getVisibleTaskIds()
       if (visibleIds.length === 0) return
@@ -26,21 +26,21 @@ export function useTaskKeyboardNav(containerRef: RefObject<HTMLDivElement | null
 
       const moveDown = (): void => {
         if (currentIndex < visibleIds.length - 1) {
-          selectTask(visibleIds[currentIndex + 1])
+          navigateToTask(visibleIds[currentIndex + 1], activeGroupId)
         } else if (currentIndex === -1 && visibleIds.length > 0) {
-          selectTask(visibleIds[0])
+          navigateToTask(visibleIds[0], activeGroupId)
         }
       }
 
       const moveUp = (): void => {
         if (currentIndex > 0) {
-          selectTask(visibleIds[currentIndex - 1])
+          navigateToTask(visibleIds[currentIndex - 1], activeGroupId)
         } else if (currentIndex === 0) {
           selectTask(null)
           const input = document.querySelector<HTMLInputElement>('[data-action="new-task-input"]')
           input?.focus()
         } else if (currentIndex === -1 && visibleIds.length > 0) {
-          selectTask(visibleIds[visibleIds.length - 1])
+          navigateToTask(visibleIds[visibleIds.length - 1], activeGroupId)
         }
       }
 

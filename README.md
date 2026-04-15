@@ -46,6 +46,9 @@ These work from anywhere in the app, including inside the terminal.
 | `⌘ T`         | Focus the task pane                 |
 | `⌘ ↑` / `⌘ K` | Select previous task                |
 | `⌘ ↓` / `⌘ J` | Select next task                    |
+| `⌘ [`         | Navigate back                       |
+| `⌘ ]`         | Navigate forward                    |
+| `⌘ E`         | Open recent task switcher           |
 | `⌘ 1` – `⌘ 9` | Switch to Nth tab in the right pane |
 
 ### Task List

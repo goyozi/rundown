@@ -39,7 +39,8 @@ export function TaskItem({
 }): React.ReactElement {
   const {
     selectedTaskId,
-    selectTask,
+    navigateToTask,
+    activeGroupId,
     updateDescription,
     addTask,
     getChildren,
@@ -58,7 +59,8 @@ export function TaskItem({
   } = useTaskStore(
     useShallow((s) => ({
       selectedTaskId: s.selectedTaskId,
-      selectTask: s.selectTask,
+      navigateToTask: s.navigateToTask,
+      activeGroupId: s.activeGroupId,
       updateDescription: s.updateDescription,
       addTask: s.addTask,
       getChildren: s.getChildren,
@@ -162,7 +164,7 @@ export function TaskItem({
                 dropPosition === 'inside' && 'drop-nest-target bg-primary/10 rounded-md'
               )}
               style={{ paddingLeft: `${depth * 21 + 10}px` }}
-              onClick={() => selectTask(task.id)}
+              onClick={() => navigateToTask(task.id, activeGroupId)}
               onDoubleClick={() => startEditing(task.id)}
               data-testid={`task-item-${task.id}`}
               data-task-description={task.description}
